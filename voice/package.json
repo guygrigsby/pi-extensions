@@ -1,5 +1,5 @@
 {
-  "name": "pi-voice",
+  "name": "@guygrigsby/pi-voice",
   "version": "0.1.0",
   "description": "Build a personal writing-voice corpus from email, blog, and GitHub PR/review history; distill it into a style guide; draft new text in your own voice. Pi package.",
   "keywords": ["pi-package", "pi", "skills", "writing", "voice"],

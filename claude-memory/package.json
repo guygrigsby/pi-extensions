@@ -1,5 +1,5 @@
 {
-  "name": "pi-claude-memory",
+  "name": "@guygrigsby/pi-claude-memory",
   "version": "0.1.0",
   "description": "Read-only: inject the Claude Code project memory (MEMORY.md and fact files) into a pi session's context. Never writes.",
   "keywords": ["pi-package", "pi", "extension", "memory", "claude"],

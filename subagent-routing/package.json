@@ -1,5 +1,5 @@
 {
-  "name": "pi-subagent-routing",
+  "name": "@guygrigsby/pi-subagent-routing",
   "version": "0.1.0",
   "description": "Inject a subagent model-routing policy: the orchestrator plans and judges on its own live model and fans implementation out to cheaper subagents, reviewing before it accepts.",
   "keywords": ["pi-package", "pi", "extension", "subagents", "orchestration", "routing"],
