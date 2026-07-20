@@ -9,6 +9,12 @@ Compact TUI for the [pi coding agent](https://github.com/earendil-works/pi): col
 ▶ grep   SemanticEditProtocol
 ```
 
+## Install
+
+```
+pi install npm:@guygrigsby/pi-lean
+```
+
 ## `lean-tools` — one line per tool
 
 pi's built-in tool blocks render a full colored shell (the green/red box). This strips the shell and folds each completed call to a single `▶` line: tool, target, and a minimal summary (edits show `(+A -B)`, failures show why, everything else stays bare). Running calls stream live so you still see activity.

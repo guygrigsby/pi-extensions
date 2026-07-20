@@ -7,7 +7,7 @@ The premise: in-context grounding (rules + style guide + a few register-matched 
 ## Install
 
 ```
-pi install github.com/guygrigsby/pi-extensions/voice
+pi install npm:@guygrigsby/pi-voice
 ```
 
 Or from a local checkout:

@@ -9,6 +9,12 @@ A switchable menagerie of coding-agent companions for [pi](https://github.com/ea
    " "                               ^ ^
 ```
 
+## Install
+
+```
+pi install npm:@guygrigsby/pi-pets
+```
+
 ## The roster
 
 | Pet        | Who                    | Palette                  |

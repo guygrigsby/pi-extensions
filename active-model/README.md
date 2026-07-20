@@ -10,3 +10,9 @@ do the work directly. Pairs with the `subagent-routing` extension, which reads
 this identity when deciding how to route and escalate.
 
 No configuration.
+
+## Install
+
+```
+pi install npm:@guygrigsby/pi-active-model
+```

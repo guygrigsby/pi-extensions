@@ -15,3 +15,9 @@ request has happened yet in the session, it says so.
 
 Discovered on the frontier `pi` profile, and loaded explicitly on `pil` via
 `-e`. No configuration.
+
+## Install
+
+```
+pi install npm:@guygrigsby/pi-promptdump
+```

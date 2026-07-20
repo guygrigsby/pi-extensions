@@ -13,3 +13,9 @@ Global memory (the user-wide `~/.claude/CLAUDE.md`) is loaded by the `pi`
 launch wrapper, not by this extension.
 
 Config: set `PI_CCMEM=off` to disable injection.
+
+## Install
+
+```
+pi install npm:@guygrigsby/pi-claude-memory
+```

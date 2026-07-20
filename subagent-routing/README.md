@@ -15,3 +15,9 @@ Pairs with the `active-model` extension (which tells the orchestrator its live
 identity) and the global `reviewer` agent type (`~/.pi/agent/agents/reviewer.md`).
 
 No configuration.
+
+## Install
+
+```
+pi install npm:@guygrigsby/pi-subagent-routing
+```
