@@ -1,0 +1,12 @@
+{
+  "name": "pi-claude-memory",
+  "version": "0.1.0",
+  "description": "Read-only: inject the Claude Code project memory (MEMORY.md and fact files) into a pi session's context. Never writes.",
+  "keywords": ["pi-package", "pi", "extension", "memory", "claude"],
+  "license": "MIT",
+  "author": { "name": "Guy J Grigsby" },
+  "files": ["extensions/", "tests/", "README.md"],
+  "scripts": { "test": "node --test" },
+  "pi": { "extensions": ["./extensions/claude-memory.ts"] },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" }
+}

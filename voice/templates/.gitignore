@@ -1,0 +1,14 @@
+# Voice corpus contents are personal and frequently include private-repo
+# content (review comments on internal codebases, sent emails, etc).
+# Never commit them to a shared repository.
+
+corpus/
+*.jsonl
+*.json
+manifest.md
+
+# Keep the user-edited rules and the distilled style guide tracked locally
+# but ignored by default. Uncomment if you want to commit them to a personal
+# private repo for backup.
+# !rules.md
+# !voice.md

@@ -1,0 +1,44 @@
+{
+  "name": "pi-pets",
+  "version": "0.1.0",
+  "description": "A switchable menagerie of coding-agent companions for pi. Each pet is a character with ASCII art, quips, and a matching theme; /pet swaps them, and an optional perch keeps your pet ever-present in the TUI.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "theme",
+    "extension",
+    "pets",
+    "fun"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Guy J Grigsby"
+  },
+  "files": [
+    "extensions/",
+    "pets/",
+    "generated/",
+    "themes/",
+    "scripts/",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "scripts": {
+    "gen": "node scripts/gen.mjs",
+    "test": "node --test"
+  },
+  "pi": {
+    "themes": [
+      "./themes"
+    ],
+    "extensions": [
+      "./extensions/pets.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.0"
+  }
+}

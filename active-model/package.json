@@ -1,0 +1,12 @@
+{
+  "name": "pi-active-model",
+  "version": "0.1.0",
+  "description": "Inject a live call-out of the currently-active model into the system prompt each turn, so the orchestrator knows which model it is running and can route accordingly.",
+  "keywords": ["pi-package", "pi", "extension", "model", "orchestration"],
+  "license": "MIT",
+  "author": { "name": "Guy J Grigsby" },
+  "files": ["extensions/", "tests/", "README.md"],
+  "scripts": { "test": "node --test" },
+  "pi": { "extensions": ["./extensions/active-model.ts"] },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" }
+}

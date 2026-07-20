@@ -1,0 +1,37 @@
+{
+  "name": "pi-lean",
+  "version": "0.1.0",
+  "description": "Collapse every pi tool call to a single line and keep the agent's prose short and dense. Claude-Code-style compact TUI for the pi coding agent.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension",
+    "tui",
+    "compact",
+    "tools"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Guy J Grigsby"
+  },
+  "files": [
+    "extensions/",
+    "tests/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/lean-tools.ts",
+      "./extensions/lean-prose.ts",
+      "./extensions/lean-usermsg.ts",
+      "./extensions/lean-spacing.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  }
+}
