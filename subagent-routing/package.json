@@ -4,6 +4,7 @@
   "description": "Inject a subagent model-routing policy: the orchestrator plans and judges on its own live model and fans implementation out to cheaper subagents, reviewing before it accepts.",
   "keywords": ["pi-package", "pi", "extension", "subagents", "orchestration", "routing"],
   "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "subagent-routing" },
   "author": { "name": "Guy J Grigsby" },
   "files": ["extensions/", "tests/", "README.md"],
   "scripts": { "test": "node --test" },

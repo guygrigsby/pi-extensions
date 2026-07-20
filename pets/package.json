@@ -11,6 +11,7 @@
     "fun"
   ],
   "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "pets" },
   "author": {
     "name": "Guy J Grigsby"
   },

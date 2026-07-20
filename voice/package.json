@@ -4,6 +4,7 @@
   "description": "Build a personal writing-voice corpus from email, blog, and GitHub PR/review history; distill it into a style guide; draft new text in your own voice. Pi package.",
   "keywords": ["pi-package", "pi", "skills", "writing", "voice"],
   "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "voice" },
   "author": {
     "name": "Guy J Grigsby"
   },
