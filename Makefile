@@ -3,7 +3,7 @@
 # Auto-discovers packages (any subdir with a package.json), so adding a new one
 # needs no edit here.
 #
-#   make install   install all packages into pi (global settings)
+#   make install   install all packages except $(SKIP) into pi (global settings)
 #   make local     install all packages project-locally (.pi/settings.json)
 #   make test      run each package's test script
 #   make list      print discovered packages
@@ -14,14 +14,17 @@ NPM     ?= npm
 # prompt. Override with `make install APPROVE=` to install interactively.
 APPROVE ?= --approve
 PKGS := $(patsubst %/package.json,%,$(wildcard */package.json))
+# Packages skipped by install/local. Override: `make install SKIP=`
+SKIP    ?= pets
+INSTALL_PKGS := $(filter-out $(SKIP),$(PKGS))
 
 .PHONY: install local test list publish publish-dry
 
 install:
-	@for p in $(PKGS); do echo "==> pi install $$p"; $(PI) install "$(CURDIR)/$$p" $(APPROVE) || exit 1; done
+	@for p in $(INSTALL_PKGS); do echo "==> pi install $$p"; $(PI) install "$(CURDIR)/$$p" $(APPROVE) || exit 1; done
 
 local:
-	@for p in $(PKGS); do echo "==> pi install -l $$p"; $(PI) install "$(CURDIR)/$$p" -l $(APPROVE) || exit 1; done
+	@for p in $(INSTALL_PKGS); do echo "==> pi install -l $$p"; $(PI) install "$(CURDIR)/$$p" -l $(APPROVE) || exit 1; done
 
 test:
 	@for p in $(PKGS); do \
