@@ -25,12 +25,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/lean-tools.ts",
-      "./extensions/lean-prose.ts",
-      "./extensions/lean-usermsg.ts",
-      "./extensions/lean-spacing.ts",
-      "./extensions/lean-thinking.ts",
-      "./extensions/lean-anytool.ts"
+      "./extensions/lean.ts"
     ]
   },
   "peerDependencies": {
