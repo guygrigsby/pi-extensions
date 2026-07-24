@@ -5,9 +5,20 @@ import {
 	toolTarget,
 	editCounts,
 	foldSummary,
+	quietLabel,
 	resultText,
 	lineCount,
 } from "../extensions/lean-tools-core.mjs";
+
+test("quietLabel: past-tense summary, no command echo, basenames only", () => {
+	assert.equal(quietLabel("bash", { command: "git status && rm -rf x" }), "Ran shell command");
+	assert.equal(quietLabel("read", { path: "src/compiler.go" }), "Read compiler.go");
+	assert.equal(quietLabel("edit", { path: "a/b/parser.go" }), "Edited parser.go");
+	assert.equal(quietLabel("write", { path: "out.txt" }), "Wrote out.txt");
+	assert.equal(quietLabel("grep", { pattern: "SemanticEdit" }), 'Searched "SemanticEdit"');
+	assert.equal(quietLabel("ls", { path: "/tmp/dir/" }), "Listed dir");
+	assert.equal(quietLabel("ls", {}), "Listed directory");
+});
 
 test("padTool aligns short names, keeps long ones", () => {
 	assert.equal(padTool("ls"), "ls   ");

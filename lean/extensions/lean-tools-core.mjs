@@ -99,3 +99,41 @@ export function foldSummary(name, result, isError) {
 
 export const CARET_FOLDED = "▶";
 export const CARET_EXPANDED = "▼";
+
+function basename(p) {
+	const s = String(p ?? "").replace(/\/+$/, "");
+	const i = s.lastIndexOf("/");
+	return i >= 0 ? s.slice(i + 1) : s;
+}
+
+/**
+ * The quiet, past-tense summary shown for a completed call in folded mode:
+ * one dark-gray line, no command echo (Claude-Code style). Deliberately terse —
+ * a file basename where useful, nothing where the tool speaks for itself.
+ *
+ *   bash  → Ran shell command
+ *   read  → Read parser.go
+ *   edit  → Edited parser.go
+ *   grep  → Searched "SemanticEdit"
+ */
+export function quietLabel(name, args) {
+	const a = args ?? {};
+	switch (name) {
+		case "bash":
+			return "Ran shell command";
+		case "read":
+			return `Read ${basename(a.path)}`;
+		case "edit":
+			return `Edited ${basename(a.path)}`;
+		case "write":
+			return `Wrote ${basename(a.path)}`;
+		case "grep":
+			return `Searched "${String(a.pattern ?? "")}"`;
+		case "find":
+			return "Searched files";
+		case "ls":
+			return `Listed ${basename(a.path) || "directory"}`;
+		default:
+			return name;
+	}
+}

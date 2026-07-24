@@ -1,10 +1,13 @@
 /**
- * lean-tools — collapse every tool call to a single line.
+ * lean-tools — collapse every tool call to a single, subtle dark-gray line.
  *
- *   ▶ bash   git status
- *   ▶ read   compiler.go
- *   ▶ edit   parser.go (+8 -2)
- *   ▶ grep   SemanticEditProtocol
+ *   ▶ Ran shell command
+ *   ▶ Read compiler.go
+ *   ▶ Edited parser.go (+8 -2)
+ *   ▶ Searched "SemanticEditProtocol"
+ *
+ * Folded is the quiet default (past-tense summary, no command echo, all dim).
+ * ctrl+q / `/tools expanded` reveals the real command + full output.
  *
  * pi's built-in tool blocks render a full colored shell (the green/red box).
  * pi-foldable-tools strips the shell but still folds to a 2-line card. This
@@ -52,6 +55,7 @@ import {
 	padTool,
 	toolTarget,
 	foldSummary,
+	quietLabel,
 	resultText,
 	CARET_FOLDED,
 	CARET_EXPANDED,
@@ -109,25 +113,36 @@ function caret(theme: any): string {
 	return theme.fg("dim", `${mode === "expanded" ? CARET_EXPANDED : CARET_FOLDED} `);
 }
 
-/** `▶ bash   git status` — the bare call line, no summary. */
+/** `▶ bash   git status` — the bare call line, accent target. Used in expanded. */
 function callLine(name: string, args: unknown, theme: any): string {
 	const label = theme.fg("toolTitle", theme.bold(padTool(name)));
 	const target = theme.fg("accent", toolTarget(name, args));
 	return caret(theme) + label + " " + target;
 }
 
-/** `▶ edit   parser.go (+8 -2)` — call line + folded summary suffix. */
+/**
+ * The folded line — one subtle dark-gray past-tense summary, no command echo:
+ *   ▶ Ran shell command
+ *   ▶ Edited parser.go (+8 -2)
+ *   ▶ Ran shell command  ✗ exit 1
+ * Everything dim; only failures take the error color so they still stand out.
+ */
 function foldedLine(name: string, args: unknown, result: AgentToolResult, isError: boolean, theme: any): string {
-	let line = callLine(name, args, theme);
+	let line = caret(theme) + theme.fg("dim", quietLabel(name, args));
 	const s = foldSummary(name, result, isError) as any;
-	if (s.tone === "edit") {
-		line += " " + theme.fg("success", `(+${s.add}`) + theme.fg("dim", " ") + theme.fg("error", `-${s.rem})`);
+	if (s.tone === "edit" && (s.add || s.rem)) {
+		line += theme.fg("dim", ` (+${s.add} -${s.rem})`);
 	} else if (s.tone === "error") {
 		line += "  " + theme.fg("error", s.text);
 	} else if (s.tone === "dim" && s.text) {
-		line += " " + theme.fg("dim", s.text);
+		line += theme.fg("dim", ` ${s.text}`);
 	}
 	return line;
+}
+
+/** Running state: same quiet dim line, no accent, no live output. */
+function runningLine(name: string, args: unknown, theme: any): string {
+	return caret(theme) + theme.fg("dim", quietLabel(name, args));
 }
 
 function expandedOwn(name: string, result: AgentToolResult, isError: boolean, theme: any): string {
@@ -193,16 +208,18 @@ function registerLean(pi: ExtensionAPI, cwd: string): void {
 				// While running, this line shows activity. Once complete, the whole
 				// single line moves to renderResult, so collapse this to nothing.
 				if (!context.isPartial) return emptyText(context);
-				return setText(context, callLine(name, args, theme));
+				// Expanded shows the real command; folded/quiet stays subtle.
+				if (mode === "expanded") return setText(context, callLine(name, args, theme));
+				return setText(context, runningLine(name, args, theme));
 			},
 
 			renderResult: (result, options, theme, context) => {
 				track(context);
 
 				if (options.isPartial) {
-					// Running: renderCall already shows the command line. Keep the
-					// result slot quiet except a live tail for bash.
-					if (name === "bash") {
+					// Running: renderCall already shows the line. Keep the result slot
+					// quiet — a live bash tail only when expanded, else nothing.
+					if (name === "bash" && mode === "expanded") {
 						const out = resultText(result);
 						const tail = out ? out.split("\n").slice(-6) : [];
 						return setText(context, tail.map((l: string) => theme.fg("muted", l)).join("\n"));
