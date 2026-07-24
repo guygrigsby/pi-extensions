@@ -1,0 +1,12 @@
+{
+  "name": "@guygrigsby/pi-claude-aliases",
+  "version": "0.1.0",
+  "description": "Claude-Code-style slash commands for pi: /exit and /clear.",
+  "keywords": ["pi-package", "pi", "extension", "commands", "aliases"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "claude-aliases" },
+  "author": { "name": "Guy J Grigsby" },
+  "files": ["extensions/", "README.md"],
+  "pi": { "extensions": ["./extensions/claude-aliases.ts"] },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" }
+}
