@@ -2,11 +2,33 @@
   "name": "@guygrigsby/pi-status-sweeper",
   "version": "0.1.0",
   "description": "Keep pi's footer status line empty by clearing every extension-pushed status, whichever extension set it.",
-  "keywords": ["pi-package", "pi", "extension", "tui", "footer", "status"],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension",
+    "tui",
+    "footer",
+    "status"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "status-sweeper" },
-  "author": { "name": "Guy J Grigsby" },
-  "files": ["extensions/", "README.md"],
-  "pi": { "extensions": ["./extensions/status-sweeper.ts"] },
-  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guygrigsby/pi-extensions.git",
+    "directory": "status-sweeper"
+  },
+  "author": {
+    "name": "Guy J Grigsby"
+  },
+  "files": [
+    "extensions/",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
 }

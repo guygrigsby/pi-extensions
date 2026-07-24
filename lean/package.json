@@ -1,6 +1,6 @@
 {
   "name": "@guygrigsby/pi-lean",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Collapse every pi tool call to a single line and keep the agent's prose short and dense. Claude-Code-style compact TUI for the pi coding agent.",
   "keywords": [
     "pi-package",
@@ -11,7 +11,11 @@
     "tools"
   ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "lean" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guygrigsby/pi-extensions.git",
+    "directory": "lean"
+  },
   "author": {
     "name": "Guy J Grigsby"
   },
@@ -25,7 +29,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/lean.ts"
+      "./extensions/index.ts"
     ]
   },
   "peerDependencies": {

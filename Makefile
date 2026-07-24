@@ -37,7 +37,15 @@ list:
 # Publish every package to npm (unscoped, public). Run `make test` first.
 # Names and versions on npm are permanent; bump the version before re-publishing.
 publish:
-	@for p in $(PKGS); do echo "==> npm publish $$p"; ( cd "$$p" && $(NPM) publish --access public ) || exit 1; done
+	@for p in $(PKGS); do \
+		name=$$(node -p "require('./$$p/package.json').name"); \
+		ver=$$(node -p "require('./$$p/package.json').version"); \
+		if $(NPM) view "$$name@$$ver" version >/dev/null 2>&1; then \
+			echo "== skip $$p ($$name@$$ver already published)"; \
+		else \
+			echo "==> npm publish $$p ($$name@$$ver)"; ( cd "$$p" && $(NPM) publish --access public ) || exit 1; \
+		fi; \
+	done
 
 publish-dry:
 	@for p in $(PKGS); do echo "==> npm publish --dry-run $$p"; ( cd "$$p" && $(NPM) publish --dry-run --access public ) || exit 1; done

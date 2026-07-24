@@ -2,12 +2,36 @@
   "name": "@guygrigsby/pi-header",
   "version": "0.1.0",
   "description": "Replace pi's startup header with a big block π, the version, and a time-of-day greeting.",
-  "keywords": ["pi-package", "pi", "extension", "tui", "header"],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension",
+    "tui",
+    "header"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/guygrigsby/pi-extensions.git", "directory": "header" },
-  "author": { "name": "Guy J Grigsby" },
-  "files": ["extensions/", "tests/", "README.md"],
-  "scripts": { "test": "node --test" },
-  "pi": { "extensions": ["./extensions/header.ts"] },
-  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guygrigsby/pi-extensions.git",
+    "directory": "header"
+  },
+  "author": {
+    "name": "Guy J Grigsby"
+  },
+  "files": [
+    "extensions/",
+    "tests/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
 }
