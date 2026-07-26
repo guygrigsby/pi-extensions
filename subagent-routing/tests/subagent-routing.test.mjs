@@ -5,9 +5,11 @@ import { SUBAGENT_ROUTING_POLICY } from "../extensions/subagent-routing-core.mjs
 test("policy routes cheap fan-out, inherits for judge/escalate, and reviews", () => {
   const p = SUBAGENT_ROUTING_POLICY;
   // cheap fan-out menu present
-  assert.match(p, /openrouter\/deepseek\/deepseek-v4-flash/);
+  assert.match(p, /kimi-coding\/kimi-for-coding/);
   // orchestrator/judge model is never named — it inherits
-  assert.doesNotMatch(p, /moonshotai\/kimi-k3/);
+  assert.doesNotMatch(p, /kimi-k3/);
+  // deepseek/glm are off the menu, not just absent
+  assert.doesNotMatch(p, /openrouter\/deepseek/);
   assert.match(p, /your own model/);
   assert.match(p, /WITHOUT a `model` override/);
   // review gate present
