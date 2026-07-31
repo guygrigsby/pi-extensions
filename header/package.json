@@ -1,7 +1,7 @@
 {
   "name": "@guygrigsby/pi-header",
-  "version": "0.1.1",
-  "description": "Replace pi's startup header with a big block π, the version, and a time-of-day greeting.",
+  "version": "0.2.0",
+  "description": "Replace pi's startup header with a framed two-column box: block π and greeting beside tips and what's new.",
   "keywords": [
     "pi-package",
     "pi",
