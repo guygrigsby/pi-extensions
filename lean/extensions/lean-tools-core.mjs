@@ -8,6 +8,42 @@
  * to a 2-line card; this collapses the whole thing to a single line.
  */
 
+/** The built-in tools lean re-registers, in registration order. */
+export const LEAN_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"];
+
+/**
+ * Tools lean should leave alone, from a `PI_LEAN_SKIP=edit,write` style list.
+ * Hands those rows to whatever else registers them (pi-tool-display's
+ * syntax-highlighted diffs, say) while lean keeps folding the rest.
+ */
+export function parseSkipList(raw) {
+	return new Set(
+		String(raw ?? "")
+			.split(",")
+			.map((s) => s.trim().toLowerCase())
+			.filter(Boolean),
+	);
+}
+
+/**
+ * Skip entries that name no tool lean owns. A typo would otherwise skip nothing
+ * and look like the setting was ignored, so the caller surfaces these.
+ */
+export function unknownTools(skip) {
+	return [...skip].filter((name) => !LEAN_TOOLS.includes(name));
+}
+
+/**
+ * Whether the generic one-line fold applies to a tool row. Skipped tools are
+ * left whole: handing `edit` to another renderer is pointless if the row that
+ * renderer draws then gets collapsed to a line anyway.
+ */
+export function shouldCompactRow({ toolName, hidden, expanded, renderShell }, skip) {
+	if (hidden || expanded) return false;
+	if (renderShell === "self") return false;
+	return !skip.has(String(toolName ?? "").toLowerCase());
+}
+
 // Column width tool labels pad to, so targets line up:
 //   ▶ bash   git status
 //   ▶ read   compiler.go

@@ -4,7 +4,7 @@ Extensions and packages for [pi](https://github.com/earendil-works/pi). Each sub
 
 | Package | What it is |
 | ------- | ---------- |
-| [`lean/`](lean/) | Compact Claude-Code-style TUI: collapse every tool call to a single `▶` line (`/tools`, `ctrl+q`), a frameless one-line user message, no blank lines between blocks, and short dense prose (`/prose`). |
+| [`lean/`](lean/) | Compact Claude-Code-style TUI: collapse every tool call to a single `▶` line (`/tools`, `ctrl+q`), a frameless one-line user message, no blank lines between blocks, and short dense prose (`/prose`). `PI_LEAN_SKIP=edit,write` keeps the fold everywhere but edits, where a syntax-highlighted diff belongs. Ships the `neutral-hue` theme. |
 | [`voice/`](voice/) | Build a personal writing-voice corpus, distill it into a style guide, and draft new text in your voice. Skills: `/skill:voice`, `voice-init`, `voice-distill`, `voice-pull-emails`, `voice-pull-blog`. Port of the `my-voice` Claude Code plugin. |
 | [`pets/`](pets/) | A switchable menagerie of coding-agent companions: ASCII-art characters with quips and matching themes, swapped with `/pet`, with an optional ever-present perch. |
 

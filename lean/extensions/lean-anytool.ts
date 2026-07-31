@@ -20,11 +20,15 @@
  *
  * Config:
  *   PI_LEAN_ANYTOOL   off → leave other tools' full boxes alone.
+ *   PI_LEAN_SKIP      tools left whole, same list lean-tools reads.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { ToolExecutionComponent } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import { parseSkipList, shouldCompactRow } from "./lean-tools-core.mjs";
+
+const skip = parseSkipList(process.env.PI_LEAN_SKIP);
 
 const FLAG = "__leanAnyToolPatched";
 
@@ -57,10 +61,16 @@ function patch(): void {
 	proto.render = function patchedRender(this: any, width: number): string[] {
 		try {
 			if (
-				!this.hideComponent &&
-				!this.expanded &&
 				typeof this.getRenderShell === "function" &&
-				this.getRenderShell() !== "self"
+				shouldCompactRow(
+					{
+						toolName: this.toolName,
+						hidden: this.hideComponent,
+						expanded: this.expanded,
+						renderShell: this.getRenderShell(),
+					},
+					skip,
+				)
 			) {
 				return compactLines(this, width);
 			}

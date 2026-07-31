@@ -1,6 +1,6 @@
 {
   "name": "@guygrigsby/pi-lean",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Collapse every pi tool call to a single line and keep the agent's prose short and dense. Claude-Code-style compact TUI for the pi coding agent.",
   "keywords": [
     "pi-package",
@@ -21,6 +21,7 @@
   },
   "files": [
     "extensions/",
+    "themes/",
     "tests/",
     "README.md"
   ],
@@ -30,6 +31,9 @@
   "pi": {
     "extensions": [
       "./extensions/index.ts"
+    ],
+    "themes": [
+      "./themes"
     ]
   },
   "peerDependencies": {

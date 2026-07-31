@@ -27,10 +27,13 @@
  *
  * Config:
  *   PI_LEAN_MODE    startup mode: folded (default) | expanded | hidden
+ *   PI_LEAN_SKIP    tools to leave alone, e.g. "edit,write" (default: none)
  *
  * Owns the built-in tool rendering, so it conflicts with any other extension
  * that re-registers read/bash/edit/write/grep/find/ls (e.g. pi-foldable-tools,
- * or pi-tool-display with its registerToolOverrides on). Run only one.
+ * or pi-tool-display with its registerToolOverrides on). Run only one — or split
+ * the set with PI_LEAN_SKIP, which is how you keep the one-line fold for most
+ * tools while handing edits to a renderer with syntax-highlighted diffs.
  *
  * Adapted from pi-foldable-tools (MIT, earendil-works).
  */
@@ -59,6 +62,9 @@ import {
 	resultText,
 	CARET_FOLDED,
 	CARET_EXPANDED,
+	LEAN_TOOLS,
+	parseSkipList,
+	unknownTools,
 } from "./lean-tools-core.mjs";
 
 type Mode = "folded" | "expanded" | "hidden";
@@ -70,6 +76,10 @@ function readDefaultMode(): Mode {
 }
 
 let mode: Mode = readDefaultMode();
+
+// Tools handed to another renderer. Read once — pi reloads the extension when
+// the environment changes anyway.
+const skip = parseSkipList(process.env.PI_LEAN_SKIP);
 
 // Every rendered block's invalidate(), so a mode toggle re-renders the whole
 // transcript (past + present), and its args, so renderResult can rebuild the
@@ -177,18 +187,21 @@ function expandedOwn(name: string, result: AgentToolResult, isError: boolean, th
 }
 
 function registerLean(pi: ExtensionAPI, cwd: string): void {
-	const originals: Record<string, ToolDefinition> = {
-		read: createReadToolDefinition(cwd),
-		bash: createBashToolDefinition(cwd),
-		edit: createEditToolDefinition(cwd),
-		write: createWriteToolDefinition(cwd),
-		grep: createGrepToolDefinition(cwd),
-		find: createFindToolDefinition(cwd),
-		ls: createLsToolDefinition(cwd),
+	const factories: Record<string, (cwd: string) => ToolDefinition> = {
+		read: createReadToolDefinition,
+		bash: createBashToolDefinition,
+		edit: createEditToolDefinition,
+		write: createWriteToolDefinition,
+		grep: createGrepToolDefinition,
+		find: createFindToolDefinition,
+		ls: createLsToolDefinition,
 	};
 
-	for (const name of Object.keys(originals)) {
-		const orig = originals[name];
+	for (const name of LEAN_TOOLS) {
+		// Skipped tools are never registered, so the built-in (or another
+		// extension's override) keeps the row.
+		if (skip.has(name)) continue;
+		const orig = factories[name](cwd);
 		pi.registerTool({
 			name: orig.name,
 			label: orig.label,
@@ -271,6 +284,12 @@ export default function leanTools(pi: ExtensionAPI): void {
 		registerLean(pi, ctx.cwd ?? process.cwd());
 		try {
 			ctx.ui.setStatus("lean-tools", undefined); // no persistent badge; mode shows via /tools and the toast on change
+			// A misspelled skip entry silently skips nothing; say so rather than
+			// leave the user wondering why their setting did nothing.
+			const bad = unknownTools(skip);
+			if (bad.length) {
+				ctx.ui.notify(`PI_LEAN_SKIP: no such tool: ${bad.join(", ")}`, "warning");
+			}
 		} catch {
 			/* ignore */
 		}

@@ -8,7 +8,49 @@ import {
 	quietLabel,
 	resultText,
 	lineCount,
+	parseSkipList,
+	unknownTools,
+	shouldCompactRow,
+	LEAN_TOOLS,
 } from "../extensions/lean-tools-core.mjs";
+
+test("parseSkipList: comma list, case and space tolerant", () => {
+	assert.deepEqual([...parseSkipList("edit,write")], ["edit", "write"]);
+	assert.deepEqual([...parseSkipList("  Edit , WRITE ,, ")], ["edit", "write"]);
+	assert.deepEqual([...parseSkipList("edit,edit")], ["edit"]);
+});
+
+test("parseSkipList: nothing skipped by default", () => {
+	assert.equal(parseSkipList("").size, 0);
+	assert.equal(parseSkipList(undefined).size, 0);
+	assert.equal(parseSkipList(null).size, 0);
+});
+
+test("unknownTools flags typos so a silent no-op is visible", () => {
+	assert.deepEqual(unknownTools(parseSkipList("edit,write")), []);
+	assert.deepEqual(unknownTools(parseSkipList("edtit,write")), ["edtit"]);
+	assert.deepEqual(unknownTools(new Set()), []);
+});
+
+test("shouldCompactRow leaves skipped tools to their own renderer", () => {
+	const skip = parseSkipList("edit,write");
+	const row = { toolName: "edit", renderShell: "default" };
+	assert.equal(shouldCompactRow(row, skip), false);
+	assert.equal(shouldCompactRow({ toolName: "session_search", renderShell: "default" }, skip), true);
+	assert.equal(shouldCompactRow({ toolName: "EDIT", renderShell: "default" }, skip), false);
+});
+
+test("shouldCompactRow respects hidden, expanded and self-rendered rows", () => {
+	const none = parseSkipList("");
+	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "default" }, none), true);
+	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "self" }, none), false);
+	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "default", expanded: true }, none), false);
+	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "default", hidden: true }, none), false);
+});
+
+test("LEAN_TOOLS is the tool set lean owns", () => {
+	assert.deepEqual(LEAN_TOOLS, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
+});
 
 test("quietLabel: past-tense summary, no command echo, basenames only", () => {
 	assert.equal(quietLabel("bash", { command: "git status && rm -rf x" }), "Ran shell command");

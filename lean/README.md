@@ -1,6 +1,6 @@
 # pi-lean
 
-Compact TUI for the [pi coding agent](https://github.com/earendil-works/pi): collapse every tool call to a single line, shrink the user message to a tinted one-liner, strip the blank lines between blocks, and keep the agent's prose short and dense. Four independent extensions in one package.
+Compact TUI for the [pi coding agent](https://github.com/earendil-works/pi): collapse every tool call to a single line, shrink the user message to a tinted one-liner, strip the blank lines between blocks, and keep the agent's prose short and dense. Independent extensions in one package, plus a theme built for them.
 
 ```
 ▶ bash   git status
@@ -25,6 +25,17 @@ pi's built-in tool blocks render a full colored shell (the green/red box). This 
 | `/tools [mode]` | set `folded` \| `expanded` \| `hidden` directly (cycles with no arg) |
 | `ctrl+o` | (built-in) expand a row's output |
 | `PI_LEAN_MODE` | startup mode: `folded` (default) \| `expanded` \| `hidden` |
+| `PI_LEAN_SKIP` | tools to leave alone, e.g. `edit,write` (default: none) |
+
+It **owns** the built-in tool rendering (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`), so it conflicts with any other extension that re-registers those tools. Do not run it alongside [`pi-foldable-tools`](https://www.npmjs.com/package/pi-foldable-tools).
+
+`PI_LEAN_SKIP` splits that ownership per tool rather than per extension. A skipped tool is not registered here and is not folded by `lean-anytool` either, so its own renderer's row survives whole. The case it exists for is edits: folding a diff to one line hides the only part worth seeing, so hand `edit` and `write` to [`pi-tool-display`](https://www.npmjs.com/package/pi-tool-display) and keep the fold everywhere else.
+
+```
+PI_LEAN_SKIP=edit,write pi
+```
+
+with `registerToolOverrides.edit` and `.write` set to `true` in `pi-tool-display`'s `config.json`, and its other entries `false`. That gives syntax-highlighted diffs with row fills and word-level emphasis for edits, one-line folds for everything else. See [ADR 1](../docs/adr/0001-tool-render-ownership.md).
 
 Expand is keyboard-driven (`ctrl+q` all rows, `ctrl+o` a row's output). Per-row **click**-to-expand isn't offered: pi never enables terminal mouse reporting and exposes no mouse events or row hit-testing to extensions, so clicks belong to your terminal (text selection), not pi. Clickable rows would need an upstream pi change.
 
@@ -48,8 +59,6 @@ Pairs with `pi-tool-display`'s `enableNativeUserMessageBox: false` (drop its fra
 
 Maximally tight by design. If turns end up too cramped, set `PI_LEAN_SPACING=off`.
 
-It **owns** the built-in tool rendering (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`), so it conflicts with any other extension that re-registers those tools. Do not run it alongside `pi-foldable-tools`, or alongside `pi-tool-display` with its `registerToolOverrides` on. `pi-tool-display` pairs fine if you set every `registerToolOverrides` entry to `false` (keeps its native user-message box and thinking labels; hands tool rendering to lean).
-
 ## `lean-prose` — short, dense output
 
 Appends a terseness layer to the system prompt: lead with the answer, cut preamble and filler, prefer a phrase to a sentence. Tone and length only — never trades away correctness or completeness of the work.
@@ -61,6 +70,19 @@ Appends a terseness layer to the system prompt: lead with the answer, cut preamb
 | `PI_LEAN_PROSE` | startup default: `on` (default) \| `off` |
 
 State persists to `$PI_CODING_AGENT_DIR/lean-prose.json`.
+
+## `neutral-hue` — a theme for this look
+
+`themes/neutral-hue.json`, offered by the package and selected with `"theme": "neutral-hue"` in your settings or `/settings`.
+
+Neutral dark grays for prose, hue only where it separates structure: purple keywords, blue functions, green strings, teal types, orange numbers, lavender inline code. Two tokens matter more than the rest once edits render as real diffs, since the diff renderer fills rows from them:
+
+| Token | Value | What it paints |
+| ----- | ----- | -------------- |
+| `toolSuccessBg` | `#1c3326` | added-line background |
+| `toolErrorBg` | `#3a1f26` | removed-line background |
+
+A theme that leaves those at the terminal background gets a diff with no fill.
 
 ## Install
 
