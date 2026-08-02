@@ -20,15 +20,19 @@
  *
  * Config:
  *   PI_LEAN_ANYTOOL   off → leave other tools' full boxes alone.
- *   PI_LEAN_SKIP      tools left whole, same list lean-tools reads.
+ *   PI_LEAN_SKIP      tools left whole, via the shared leftAlone set —
+ *                     which also carries the tools lean-tools auto-deferred
+ *                     to another extension's renderer.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { ToolExecutionComponent } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
-import { parseSkipList, shouldCompactRow } from "./lean-tools-core.mjs";
-
-const skip = parseSkipList(process.env.PI_LEAN_SKIP);
+import { shouldCompactRow } from "./lean-tools-core.mjs";
+// The live "leave these alone" set: PI_LEAN_SKIP plus tools lean-tools found
+// already owned by another extension at session_start. Folding those rows here
+// would throw away the renderer they were handed to.
+import { leftAlone as skip } from "./lean-tools";
 
 const FLAG = "__leanAnyToolPatched";
 

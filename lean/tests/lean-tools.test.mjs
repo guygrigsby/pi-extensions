@@ -11,6 +11,7 @@ import {
 	parseSkipList,
 	unknownTools,
 	shouldCompactRow,
+	ownedElsewhere,
 	LEAN_TOOLS,
 } from "../extensions/lean-tools-core.mjs";
 
@@ -46,6 +47,28 @@ test("shouldCompactRow respects hidden, expanded and self-rendered rows", () => 
 	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "self" }, none), false);
 	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "default", expanded: true }, none), false);
 	assert.equal(shouldCompactRow({ toolName: "grep", renderShell: "default", hidden: true }, none), false);
+});
+
+test("ownedElsewhere: another extension's registration defers the tool", () => {
+	const registry = [
+		{ name: "edit", sourceInfo: { source: "extension", path: "/x/pi-tool-display/index.ts" } },
+		{ name: "write", sourceInfo: { source: "extension", path: "/x/pi-tool-display/index.ts" } },
+		{ name: "read", sourceInfo: { source: "builtin" } },
+		{ name: "bash" },
+	];
+	assert.equal(ownedElsewhere(registry, "edit"), true);
+	assert.equal(ownedElsewhere(registry, "write"), true);
+	assert.equal(ownedElsewhere(registry, "read"), false);
+	// No sourceInfo at all reads as builtin: registering is safe.
+	assert.equal(ownedElsewhere(registry, "bash"), false);
+	// Absent from the registry entirely: nothing to defer to.
+	assert.equal(ownedElsewhere(registry, "grep"), false);
+});
+
+test("ownedElsewhere: no registry (pre-bind) means register everything", () => {
+	assert.equal(ownedElsewhere(undefined, "edit"), false);
+	assert.equal(ownedElsewhere(null, "write"), false);
+	assert.equal(ownedElsewhere([], "edit"), false);
 });
 
 test("LEAN_TOOLS is the tool set lean owns", () => {

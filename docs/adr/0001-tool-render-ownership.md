@@ -1,6 +1,6 @@
 # 1. Split tool-row ownership instead of one renderer owning everything
 
-Status: Accepted (2026-07-31)
+Status: Accepted (2026-07-31). Coordination mechanism superseded by [ADR 2](0002-registry-based-tool-deferral.md); the per-tool split stands.
 
 ## Context
 

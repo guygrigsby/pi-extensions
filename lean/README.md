@@ -25,17 +25,13 @@ pi's built-in tool blocks render a full colored shell (the green/red box). This 
 | `/tools [mode]` | set `folded` \| `expanded` \| `hidden` directly (cycles with no arg) |
 | `ctrl+o` | (built-in) expand a row's output |
 | `PI_LEAN_MODE` | startup mode: `folded` (default) \| `expanded` \| `hidden` |
-| `PI_LEAN_SKIP` | tools to leave alone, e.g. `edit,write` (default: none) |
+| `PI_LEAN_SKIP` | tools to force-skip, e.g. `edit,write` (default: none) |
 
-It **owns** the built-in tool rendering (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`), so it conflicts with any other extension that re-registers those tools. Do not run it alongside [`pi-foldable-tools`](https://www.npmjs.com/package/pi-foldable-tools).
+It takes over the built-in tool rendering (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`) — but per tool, and only where nothing else got there first. Registration happens at `session_start`, after asking the live registry (`pi.getAllTools`) who owns each tool: one already registered by another extension is left to it, automatically. No coordination config, no conflict error.
 
-`PI_LEAN_SKIP` splits that ownership per tool rather than per extension. A skipped tool is not registered here and is not folded by `lean-anytool` either, so its own renderer's row survives whole. The case it exists for is edits: folding a diff to one line hides the only part worth seeing, so hand `edit` and `write` to [`pi-tool-display`](https://www.npmjs.com/package/pi-tool-display) and keep the fold everywhere else.
+The case this exists for is edits: folding a diff to one line hides the only part worth seeing. Turn on `registerToolOverrides.edit` and `.write` in [`pi-tool-display`](https://www.npmjs.com/package/pi-tool-display)'s `config.json` (its other entries `false`) and lean backs off those two: syntax-highlighted diffs with row fills and word-level emphasis for edits, one-line folds for everything else. Run without `pi-tool-display` and lean takes all seven. Deferred tools are also exempt from `lean-anytool`'s fold, so the other renderer's row survives whole. See [ADR 2](../docs/adr/0002-registry-based-tool-deferral.md).
 
-```
-PI_LEAN_SKIP=edit,write pi
-```
-
-with `registerToolOverrides.edit` and `.write` set to `true` in `pi-tool-display`'s `config.json`, and its other entries `false`. That gives syntax-highlighted diffs with row fills and word-level emphasis for edits, one-line folds for everything else. See [ADR 1](../docs/adr/0001-tool-render-ownership.md).
+`PI_LEAN_SKIP` remains as a manual override: named tools are never registered by lean, falling to whatever else claims them or pi's built-in rendering.
 
 Expand is keyboard-driven (`ctrl+q` all rows, `ctrl+o` a row's output). Per-row **click**-to-expand isn't offered: pi never enables terminal mouse reporting and exposes no mouse events or row hit-testing to extensions, so clicks belong to your terminal (text selection), not pi. Clickable rows would need an upstream pi change.
 

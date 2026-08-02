@@ -26,6 +26,20 @@ export function parseSkipList(raw) {
 }
 
 /**
+ * Whether another extension already owns `name` in the live tool registry
+ * (pi.getAllTools() output). Lean defers to it instead of double-registering —
+ * pi rejects the whole extension on a duplicate tool. Mirrors pi-tool-display's
+ * own ownership check, so whichever of the two loads second backs off.
+ * A missing registry (pre-bind), a missing tool or a "builtin" source all mean
+ * nobody to defer to: register.
+ */
+export function ownedElsewhere(allTools, name) {
+	const tool = (allTools ?? []).find((t) => t?.name === name);
+	const source = tool?.sourceInfo?.source;
+	return Boolean(source && source !== "builtin");
+}
+
+/**
  * Skip entries that name no tool lean owns. A typo would otherwise skip nothing
  * and look like the setting was ignored, so the caller surfaces these.
  */

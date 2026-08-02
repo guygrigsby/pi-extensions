@@ -27,13 +27,19 @@
  *
  * Config:
  *   PI_LEAN_MODE    startup mode: folded (default) | expanded | hidden
- *   PI_LEAN_SKIP    tools to leave alone, e.g. "edit,write" (default: none)
+ *   PI_LEAN_SKIP    tools to force-skip, e.g. "edit,write" (default: none)
  *
- * Owns the built-in tool rendering, so it conflicts with any other extension
- * that re-registers read/bash/edit/write/grep/find/ls (e.g. pi-foldable-tools,
- * or pi-tool-display with its registerToolOverrides on). Run only one — or split
- * the set with PI_LEAN_SKIP, which is how you keep the one-line fold for most
- * tools while handing edits to a renderer with syntax-highlighted diffs.
+ * Sharing tools with other renderers: pi rejects an extension outright when two
+ * register the same tool, so lean defers registration to session_start and asks
+ * the live registry (pi.getAllTools) who owns each tool first. A tool another
+ * extension already registered (pi-tool-display's edit/write diffs, say) is
+ * left to it; lean folds the rest. That makes the split automatic — turn a
+ * tool on in pi-tool-display's registerToolOverrides and lean backs off, run
+ * without pi-tool-display (the pil profile) and lean takes everything.
+ * PI_LEAN_SKIP remains as a manual override: skipped tools go to whichever
+ * renderer is present, or the built-in box when nobody claims them. The cost
+ * of deferring is pre-bind history rendering (a resumed transcript's first
+ * paint) falling to the built-in renderer; rows re-render leaned after bind.
  *
  * Adapted from pi-foldable-tools (MIT, earendil-works).
  */
@@ -65,6 +71,7 @@ import {
 	LEAN_TOOLS,
 	parseSkipList,
 	unknownTools,
+	ownedElsewhere,
 } from "./lean-tools-core.mjs";
 
 type Mode = "folded" | "expanded" | "hidden";
@@ -80,6 +87,16 @@ let mode: Mode = readDefaultMode();
 // Tools handed to another renderer. Read once — pi reloads the extension when
 // the environment changes anyway.
 const skip = parseSkipList(process.env.PI_LEAN_SKIP);
+
+// Everything lean is leaving to someone else: the forced PI_LEAN_SKIP entries
+// plus whatever session_start finds already owned by another extension.
+// lean-anytool reads this so it doesn't fold those renderers' rows either.
+export const leftAlone = new Set<string>(skip);
+
+// Names lean itself registered. Ownership checks can't tell "another extension
+// owns this" from "we registered it last session", so self-owned tools
+// re-register unconditionally (refreshes the cwd baked into the factories).
+const registeredByLean = new Set<string>();
 
 // Every rendered block's invalidate(), so a mode toggle re-renders the whole
 // transcript (past + present), and its args, so renderResult can rebuild the
@@ -197,10 +214,24 @@ function registerLean(pi: ExtensionAPI, cwd: string): void {
 		ls: createLsToolDefinition,
 	};
 
+	let registry: unknown[] | undefined;
+	try {
+		registry = pi.getAllTools();
+	} catch {
+		// Pre-bind (shouldn't happen from session_start) — nobody to defer to.
+	}
+
 	for (const name of LEAN_TOOLS) {
 		// Skipped tools are never registered, so the built-in (or another
 		// extension's override) keeps the row.
 		if (skip.has(name)) continue;
+		// Another extension got here first (pi-tool-display's diff renderer,
+		// say). Registering anyway would make pi drop lean entirely.
+		if (!registeredByLean.has(name) && ownedElsewhere(registry, name)) {
+			leftAlone.add(name);
+			continue;
+		}
+		registeredByLean.add(name);
 		const orig = factories[name](cwd);
 		pi.registerTool({
 			name: orig.name,
@@ -276,8 +307,9 @@ function cycleMode(ctx: { ui: any }): void {
 }
 
 export default function leanTools(pi: ExtensionAPI): void {
-	registerLean(pi, process.cwd());
-
+	// Registration happens in session_start, not here: pi's duplicate-tool check
+	// runs over load-time registrations only, and getAllTools (who owns what)
+	// is unavailable until the session binds.
 	pi.on("session_start", async (_event, ctx) => {
 		invalidators.clear();
 		argsById.clear();
