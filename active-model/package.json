@@ -1,6 +1,6 @@
 {
   "name": "@guygrigsby/pi-active-model",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Inject a live call-out of the currently-active model into the system prompt each turn, so the orchestrator knows which model it is running and can route accordingly.",
   "keywords": [
     "pi-package",
