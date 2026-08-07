@@ -68,9 +68,10 @@ release:
 	git commit -m "bump patch: $$(echo $$pkgs)" || exit 1; \
 	$(MAKE) publish
 
-# Publish every package to npm (unscoped, public). Run `make test` first.
-# Names and versions on npm are permanent; bump the version before re-publishing.
-publish:
+# Publish every package to npm (unscoped, public). Patch-bumps changed
+# packages first, so re-publishing never collides with an existing version.
+# Version bumps land uncommitted; `make release` is the committing path.
+publish: bump
 	@for p in $(PKGS); do \
 		name=$$(node -p "require('./$$p/package.json').name"); \
 		ver=$$(node -p "require('./$$p/package.json').version"); \
