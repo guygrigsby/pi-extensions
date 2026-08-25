@@ -1,6 +1,7 @@
 {
   "name": "@guygrigsby/pi-promptdump",
   "version": "0.1.2",
+  "type": "module",
   "description": "Dev tool: on every provider request, dump the exact payload pi sends (final system prompt plus messages) to a file so you can see precisely what the model receives.",
   "keywords": [
     "pi-package",
@@ -20,6 +21,7 @@
   },
   "files": [
     "extensions/",
+    "dist/",
     "tests/",
     "README.md"
   ],
@@ -28,7 +30,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/index.ts"
+      "./dist/index.js"
     ]
   },
   "peerDependencies": {
