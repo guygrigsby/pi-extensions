@@ -1,0 +1,37 @@
+{
+  "name": "@guygrigsby/pi-session",
+  "version": "0.1.0",
+  "description": "Stamp every pi provider request with a session id header and an enriched User-Agent (pi version, OS, distro) so aperture can group calls into sessions.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension",
+    "aperture",
+    "session"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guygrigsby/pi-extensions.git",
+    "directory": "session"
+  },
+  "author": {
+    "name": "Guy J Grigsby"
+  },
+  "files": [
+    "extensions/",
+    "tests/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
