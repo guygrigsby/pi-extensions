@@ -1,7 +1,7 @@
 {
   "name": "@guygrigsby/pi-subagent-routing",
-  "version": "0.2.0",
-  "description": "Inject a subagent model-routing policy: the orchestrator plans and judges on its own live model and fans implementation out to configured models ranked by a cost/balance/performance mode, reviewing before it accepts.",
+  "version": "0.3.0",
+  "description": "Inject a subagent model-routing policy: the orchestrator plans and judges on its own live model and fans implementation out across a price-tiered ladder of every configured model, steered by a cost/performance mode, reviewing before it accepts.",
   "keywords": [
     "pi-package",
     "pi",
