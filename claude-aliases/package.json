@@ -1,6 +1,7 @@
 {
   "name": "@guygrigsby/pi-claude-aliases",
   "version": "0.1.1",
+  "type": "module",
   "description": "Claude-Code-style slash commands for pi: /exit and /clear.",
   "keywords": [
     "pi-package",
@@ -20,11 +21,12 @@
   },
   "files": [
     "extensions/",
+    "dist/",
     "README.md"
   ],
   "pi": {
     "extensions": [
-      "./extensions/index.ts"
+      "./dist/index.js"
     ]
   },
   "peerDependencies": {

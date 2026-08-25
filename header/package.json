@@ -1,6 +1,7 @@
 {
   "name": "@guygrigsby/pi-header",
   "version": "0.2.0",
+  "type": "module",
   "description": "Replace pi's startup header with a framed two-column box: block π and greeting beside tips and what's new.",
   "keywords": [
     "pi-package",
@@ -20,6 +21,7 @@
   },
   "files": [
     "extensions/",
+    "dist/",
     "tests/",
     "README.md"
   ],
@@ -28,7 +30,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/index.ts"
+      "./dist/index.js"
     ]
   },
   "peerDependencies": {
