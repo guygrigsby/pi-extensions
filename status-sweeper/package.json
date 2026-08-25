@@ -1,6 +1,7 @@
 {
   "name": "@guygrigsby/pi-status-sweeper",
   "version": "0.1.1",
+  "type": "module",
   "description": "Keep pi's footer status line empty by clearing every extension-pushed status, whichever extension set it.",
   "keywords": [
     "pi-package",
@@ -21,11 +22,12 @@
   },
   "files": [
     "extensions/",
+    "dist/",
     "README.md"
   ],
   "pi": {
     "extensions": [
-      "./extensions/index.ts"
+      "./dist/index.js"
     ]
   },
   "peerDependencies": {

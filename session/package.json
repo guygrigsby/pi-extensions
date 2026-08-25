@@ -1,6 +1,7 @@
 {
   "name": "@guygrigsby/pi-session",
   "version": "0.1.0",
+  "type": "module",
   "description": "Stamp every pi provider request with a session id header and an enriched User-Agent (pi version, OS, distro) so aperture can group calls into sessions.",
   "keywords": [
     "pi-package",
@@ -20,6 +21,7 @@
   },
   "files": [
     "extensions/",
+    "dist/",
     "tests/",
     "README.md"
   ],
@@ -28,7 +30,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/index.ts"
+      "./dist/index.js"
     ]
   },
   "peerDependencies": {
