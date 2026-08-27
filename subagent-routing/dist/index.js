@@ -73,13 +73,14 @@ ${MODE_RULES[mode] ?? MODE_RULES.cost}
 - Hard reasoning, ambiguous specs, or a retry after the ladder is exhausted -> your own model: spawn WITHOUT a \`model\` override, so the subagent inherits the model you are running.
 - Never route fan-out to local models (mlx/*); those are for the pil profile.
 Run independent implementation subagents with run_in_background: true so they fan out in parallel.
+Always pass a \`maxTurns\` budget: ~15 for mechanical cheap-tier tasks, ~40 for mid, higher only when the task genuinely needs it. A stuck agent must die and escalate, not spin.
 
 ## Judge and escalate
-Never accept a subagent result blindly.
-1. After it returns, spawn a reviewer subagent (Agent subagent_type: "reviewer") to grade it against the task. Pass no \`model\` so the reviewer inherits your own model, read-only.
+Never accept a subagent result blindly: a summary says what the agent intended, not what it did.
+1. After it returns, spawn a reviewer subagent (Agent subagent_type: "reviewer") to grade the actual changes against the task. Hand the reviewer the diff itself (file list, \`git diff\`, or commit range), never the worker's self-report. Route the reviewer to mid for mechanical tasks; use your own model (no \`model\` override) only for a dispute, a second failed review, or a security-sensitive diff.
 2. If the reviewer approves it, accept.
 3. If it fails, either fix it yourself or re-spawn the task one tier up, then review again.
-Escalation ladder: cheap -> mid -> frontier -> your own model. Ship nothing a reviewer has not passed.
+Escalation ladder: cheap -> mid -> frontier -> your own model. Ship nothing a reviewer has not passed. Stop after two failed reviews of the same task and report to the user; do not keep climbing the ladder on your own.
 </subagent-routing>`;
 }
 
