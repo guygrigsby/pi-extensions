@@ -150,6 +150,51 @@ export function foldSummary(name, result, isError) {
 export const CARET_FOLDED = "▶";
 export const CARET_EXPANDED = "▼";
 
+/** Squash whitespace runs so multi-word output fits on one preview line. */
+function squash(s) {
+	return String(s ?? "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The little content preview under the folded line — as much of the first
+ * meaningful line of the result as fits in `width` plain-text chars. The
+ * caller colors it (something other than the fold's gray) and truncates to
+ * the real terminal width.
+ *
+ *   bash  → first output line, else stderr's first line (errors often have
+ *           no stdout), else "" so the `✗ exit N` suffix stands alone
+ *   read/edit/write → the file's first content line (skips the "Read N lines"
+ *           confirmation), capped at MAX_SOURCE chars
+ *   grep/find/ls → the matches/listing's first line
+ *
+ * "" means no preview — the folded row stays a single line.
+ */
+const MAX_SOURCE = 300;
+export function previewLine(name, result, args) {
+	const text = resultText(result);
+	const details = result?.details ?? {};
+	switch (name) {
+		case "bash": {
+			const out = squash(text.split("\n").map((l) => l.trim()).find(Boolean) ?? "");
+			if (out) return out;
+			return squash(details.stderr ?? "");
+		}
+		case "read": {
+			const m = text.match(/\n1\t([^\n]*)/);
+			const src = m ? squash(m[1]) : squash(text);
+			return src.slice(0, MAX_SOURCE);
+		}
+		case "edit":
+		case "write": {
+			const src = squash(String(args?.content ?? "").split("\n")[0]);
+			return src.slice(0, MAX_SOURCE);
+		}
+		default:
+			// grep/find/ls output is already a line-per-hit listing.
+			return squash(text.split("\n").map((l) => l.trim()).find(Boolean) ?? "");
+	}
+}
+
 function basename(p) {
 	const s = String(p ?? "").replace(/\/+$/, "");
 	const i = s.lastIndexOf("/");

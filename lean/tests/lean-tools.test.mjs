@@ -7,6 +7,7 @@ import {
 	foldSummary,
 	quietLabel,
 	resultText,
+	previewLine,
 	lineCount,
 	parseSkipList,
 	unknownTools,
@@ -145,4 +146,39 @@ test("resultText joins only text parts", () => {
 	const r = { content: [{ type: "text", text: "a" }, { type: "image" }, { type: "text", text: "b" }] };
 	assert.equal(resultText(r), "a\nb");
 	assert.equal(lineCount(resultText(r)), 2);
+});
+
+test("previewLine: bash shows first output line, squashed", () => {
+	const r = { content: [{ type: "text", text: "  On branch   main  \nnothing to commit" }] };
+	assert.equal(previewLine("bash", r, {}), "On branch main");
+});
+
+test("previewLine: bash falls back to stderr when stdout is empty", () => {
+	const r = { content: [{ type: "text", text: "" }], details: { stderr: "fatal: not a git repo" } };
+	assert.equal(previewLine("bash", r, {}), "fatal: not a git repo");
+});
+
+test("previewLine: bash empty everywhere previews nothing", () => {
+	assert.equal(previewLine("bash", { content: [{ type: "text", text: "\n\n" }] }, {}), "");
+});
+
+test("previewLine: read skips the confirmation header and squashes code", () => {
+	const r = { content: [{ type: "text", text: "Read 42 lines\n1\timport   { x } from 'y';\n2\tconst a = 1;" }] };
+	assert.equal(previewLine("read", r, {}), "import { x } from 'y';");
+});
+
+test("previewLine: edit/write preview the new content's first line", () => {
+	const args = { content: "  # Title\n\nbody text" };
+	assert.equal(previewLine("write", {}, args), "# Title");
+	assert.equal(previewLine("edit", {}, args), "# Title");
+});
+
+test("previewLine: grep previews the first hit", () => {
+	const r = { content: [{ type: "text", text: "src/a.ts:10: match here\nsrc/b.ts:2: other" }] };
+	assert.equal(previewLine("grep", r, {}), "src/a.ts:10: match here");
+});
+
+test("previewLine: huge source content is capped", () => {
+	const args = { content: "x".repeat(500) };
+	assert.equal(previewLine("write", {}, args).length, 300);
 });

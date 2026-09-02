@@ -26,8 +26,11 @@
  *   ctrl+o          (built-in) expand output within a row
  *
  * Config:
- *   PI_LEAN_MODE    startup mode: folded (default) | expanded | hidden
- *   PI_LEAN_SKIP    tools to force-skip, e.g. "edit,write" (default: none)
+ *   PI_LEAN_MODE     startup mode: folded (default) | expanded | hidden
+ *   PI_LEAN_SKIP     tools to force-skip, e.g. "edit,write" (default: none)
+ *   PI_LEAN_PREVIEW  off → folded row stays a single line (default: on — the
+ *                    first bit of the result shows in accent under the fold)
+ *   PI_LEAN_PREVIEW_WIDTH  plain-char cap for the preview (default: terminal)
  *
  * Sharing tools with other renderers: pi rejects an extension outright when two
  * register the same tool, so lean defers registration to session_start and asks
@@ -66,6 +69,7 @@ import {
 	foldSummary,
 	quietLabel,
 	resultText,
+	previewLine,
 	CARET_FOLDED,
 	CARET_EXPANDED,
 	LEAN_TOOLS,
@@ -83,6 +87,15 @@ function readDefaultMode(): Mode {
 }
 
 let mode: Mode = readDefaultMode();
+
+// The little preview under the fold — first bit of the result in accent.
+// The label says nothing ("Ran shell command"), this is what carries the
+// content. width=0 → no width cap; the TUI clips at the terminal edge.
+let previewEnabled = (process.env.PI_LEAN_PREVIEW || "on").trim().toLowerCase() !== "off";
+function previewWidth(): number {
+	const n = parseInt(process.env.PI_LEAN_PREVIEW_WIDTH || "", 10);
+	return Number.isFinite(n) && n > 0 ? n : 0;
+}
 
 // Tools handed to another renderer. Read once — pi reloads the extension when
 // the environment changes anyway.
@@ -167,6 +180,19 @@ function foldedLine(name: string, args: unknown, result: AgentToolResult, isErro
 	return line;
 }
 
+/**
+ * The accent-colored preview line under the fold: as much of the first
+ * meaningful bit of the result as fits. Indented to align with the label,
+ * clipped to the configured width (0 = no cap; the TUI clips at the edge).
+ */
+function previewRow(name: string, result: AgentToolResult, args: unknown, theme: any): string {
+	if (!previewEnabled) return "";
+	let p = previewLine(name, result, args);
+	if (!p) return "";
+	const w = previewWidth();
+	if (w && p.length > w) p = p.slice(0, Math.max(1, w - 3)) + "...";
+	return "\n  " + theme.fg("accent", p);
+}
 /** Running state: same quiet dim line, no accent, no live output. */
 function runningLine(name: string, args: unknown, theme: any): string {
 	return caret(theme) + theme.fg("dim", quietLabel(name, args));
@@ -285,8 +311,10 @@ function registerLean(pi: ExtensionAPI, cwd: string): void {
 					return setText(context, header + "\n" + expandedOwn(name, result, context.isError, theme));
 				}
 
-				// folded — the one line
-				return setText(context, foldedLine(name, args, result, context.isError, theme));
+				// folded — the one line, plus the accent preview under it
+				const line = foldedLine(name, args, result, context.isError, theme);
+				if (name === "edit") return setText(context, line); // counts say enough
+				return setText(context, line + previewRow(name, result, args, theme));
 			},
 		});
 	}

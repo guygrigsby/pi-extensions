@@ -17,7 +17,7 @@ pi install npm:@guygrigsby/pi-lean
 
 ## `lean-tools` — one line per tool
 
-pi's built-in tool blocks render a full colored shell (the green/red box). This strips the shell and folds each completed call to a single `▶` line: tool, target, and a minimal summary (edits show `(+A -B)`, failures show why, everything else stays bare). Running calls stream live so you still see activity.
+pi's built-in tool blocks render a full colored shell (the green/red box). This strips the shell and folds each completed call to a single `▶` line: tool, target, and a minimal summary (edits show `(+A -B)`, failures show why, everything else stays bare). Under the fold sits a small accent-colored preview of the result's first meaningful bit — a bash command's first output line, a read's first source line, a grep's first hit — so the quiet label ("Ran shell command") still carries content. Running calls stream live so you still see activity.
 
 | Control | Effect |
 | ------- | ------ |
@@ -26,6 +26,8 @@ pi's built-in tool blocks render a full colored shell (the green/red box). This 
 | `ctrl+o` | (built-in) expand a row's output |
 | `PI_LEAN_MODE` | startup mode: `folded` (default) \| `expanded` \| `hidden` |
 | `PI_LEAN_SKIP` | tools to force-skip, e.g. `edit,write` (default: none) |
+| `PI_LEAN_PREVIEW` | `off` → folded row stays a single line (default: on) |
+| `PI_LEAN_PREVIEW_WIDTH` | plain-char cap for the preview line (default: terminal width) |
 
 It takes over the built-in tool rendering (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`) — but per tool, and only where nothing else got there first. Registration happens at `session_start`, after asking the live registry (`pi.getAllTools`) who owns each tool: one already registered by another extension is left to it, automatically. No coordination config, no conflict error.
 
