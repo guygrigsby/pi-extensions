@@ -71,14 +71,12 @@ State persists to `$PI_CODING_AGENT_DIR/lean-prose.json`.
 
 `themes/neutral-hue.json`, offered by the package and selected with `"theme": "neutral-hue"` in your settings or `/settings`.
 
-Neutral dark grays for prose, hue only where it separates structure: purple keywords, blue functions, green strings, teal types, orange numbers, lavender inline code. Two tokens matter more than the rest once edits render as real diffs, since the diff renderer fills rows from them:
+Neutral dark grays for prose, hue only where it separates structure: purple keywords, blue functions, green strings, teal types, orange numbers, lavender inline code. pi paints the whole tool block's background from two tokens; this theme keeps success invisible (terminal background) and reserves a fill for failures:
 
 | Token | Value | What it paints |
 | ----- | ----- | -------------- |
-| `toolSuccessBg` | `#1c3326` | added-line background |
-| `toolErrorBg` | `#3a1f26` | removed-line background |
-
-A theme that leaves those at the terminal background gets a diff with no fill.
+| `toolSuccessBg` | terminal default | success-block background (no fill) |
+| `toolErrorBg` | `#3a1f26` | error-block background |
 
 ## Install
 
