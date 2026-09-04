@@ -3,6 +3,8 @@
 # Auto-discovers packages (any subdir with a package.json), so adding a new one
 # needs no edit here.
 #
+#   make build     compile every TypeScript extension into PACKAGE/dist (default)
+#   make check     verify every manifest points at an existing dist .js
 #   make install   install all packages except $(SKIP) into pi (global settings)
 #   make local     install all packages project-locally (.pi/settings.json)
 #   make test      run each package's test script
@@ -21,7 +23,7 @@ PKGS := $(patsubst %/package.json,%,$(wildcard */package.json))
 SKIP    ?= pets
 INSTALL_PKGS := $(filter-out $(SKIP),$(PKGS))
 
-.PHONY: install local test list changed bump release publish publish-dry
+.PHONY: build check lint install local redeploy test list changed bump release publish publish-dry
 
 # A package is changed if anything under it landed (or is uncommitted) since the
 # commit that last touched its version line in package.json.
@@ -32,13 +34,27 @@ CHANGED_SH = for p in $(PKGS); do \
 		fi; \
 	done
 
-install:
+# Bundle every TypeScript extension entry into PACKAGE/dist/<entry>.js.
+build:
+	@node scripts/build.mjs
+
+# Every extension manifest must point at an existing .js file, so a stale
+# or missing build can never ship.
+check: build
+	@node scripts/check-dist.mjs
+
+# No linter yet; the manifest/dist check is the lint gate.
+lint: check
+
+install: build
 	@for p in $(INSTALL_PKGS); do echo "==> pi install $$p"; $(PI) install "$(CURDIR)/$$p" $(APPROVE) || exit 1; done
 
-local:
+local: build
 	@for p in $(INSTALL_PKGS); do echo "==> pi install -l $$p"; $(PI) install "$(CURDIR)/$$p" -l $(APPROVE) || exit 1; done
 
-test:
+redeploy: install
+
+test: build
 	@for p in $(PKGS); do \
 		grep -q '"test"' "$$p/package.json" && { echo "==> test $$p"; ( cd "$$p" && npm test ) || exit 1; } || true; \
 	done
@@ -71,7 +87,7 @@ release:
 # Publish every package to npm (unscoped, public). Patch-bumps changed
 # packages first, so re-publishing never collides with an existing version.
 # Version bumps land uncommitted; `make release` is the committing path.
-publish: bump
+publish: build bump
 	@for p in $(PKGS); do \
 		name=$$(node -p "require('./$$p/package.json').name"); \
 		ver=$$(node -p "require('./$$p/package.json').version"); \
@@ -82,5 +98,5 @@ publish: bump
 		fi; \
 	done
 
-publish-dry:
+publish-dry: build
 	@for p in $(PKGS); do echo "==> npm publish --dry-run $$p"; ( cd "$$p" && $(NPM) publish --dry-run --access public ) || exit 1; done

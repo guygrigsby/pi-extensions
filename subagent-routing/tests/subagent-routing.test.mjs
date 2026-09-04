@@ -119,6 +119,14 @@ test("policy keeps the review gate, parallel fan-out, and own-model top rung", (
   assert.match(p, /trust your own knowledge/);
 });
 
+test("policy caps turns, reviews the diff on mid, and stops after two failures", () => {
+  const p = buildPolicy(models, { mode: "cost" });
+  assert.match(p, /maxTurns/);
+  assert.match(p, /Hand the reviewer the diff itself/);
+  assert.match(p, /Route the reviewer to mid for mechanical tasks/);
+  assert.match(p, /Stop after two failed reviews/);
+});
+
 test("policy says do it yourself when nothing else is configured", () => {
   const p = buildPolicy([{ provider: "moonshotai", id: "kimi-k3" }], { selfId: "moonshotai/kimi-k3" });
   assert.match(p, /do all work yourself/);

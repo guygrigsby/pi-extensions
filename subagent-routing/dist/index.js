@@ -1,92 +1,64 @@
-// subagent-routing-core - fan-out model tiering and policy text. Pure
-// functions over plain {provider, id, cost} entries, so this is unit-testable
-// in plain node. index.ts feeds it ctx.modelRegistry.getAvailable().
+// subagent-routing/extensions/index.ts
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 
-export const MODES = ["cost", "performance"];
-export const TIERS = ["cheap", "mid", "frontier"];
-
-// Per-Mtok blended rate. Subscription models (kimi-coding) report 0 and rank
-// as cheapest; pin them with a tier override where price lies about them.
-export function costScore(model) {
+// subagent-routing/extensions/subagent-routing-core.mjs
+var MODES = ["cost", "performance"];
+var TIERS = ["cheap", "mid", "frontier"];
+function costScore(model) {
   const c = model.cost ?? {};
   return (c.input ?? 0) + (c.output ?? 0);
 }
-
-// ponytail: mlx is the only local provider; extend if that changes
-export function isLocal(model) {
+function isLocal(model) {
   return model.provider === "mlx";
 }
-
-// Same model id offered by several providers is one candidate: keep the
-// cheapest provider (stable on ties by input order).
 function dedupeById(models) {
-  const best = new Map();
+  const best = /* @__PURE__ */ new Map();
   for (const m of models) {
     const seen = best.get(m.id);
     if (!seen || costScore(m) < costScore(seen)) best.set(m.id, m);
   }
   return [...best.values()];
 }
-
 function overrideFor(model, overrides) {
   const tier = overrides[`${model.provider}/${model.id}`] ?? overrides[`${model.provider}/*`];
-  return TIERS.includes(tier) ? tier : undefined;
+  return TIERS.includes(tier) ? tier : void 0;
 }
-
-// Tier every configured model: exclude local models and the orchestrator's
-// own, dedupe by id, sort by price and split into terciles, then apply config
-// overrides (exact `provider/id` beats `provider/*`; unknown tiers ignored).
-// Price is the capability proxy — the registry carries no benchmark data —
-// so overrides exist to pin the models price misplaces.
-export function assignTiers(models, { overrides = {}, selfId } = {}) {
+function assignTiers(models, { overrides = {}, selfId } = {}) {
   const pool = dedupeById(
-    models.filter((m) => !isLocal(m) && `${m.provider}/${m.id}` !== selfId),
+    models.filter((m) => !isLocal(m) && `${m.provider}/${m.id}` !== selfId)
   ).sort((a, b) => costScore(a) - costScore(b));
-
   const tiers = { cheap: [], mid: [], frontier: [] };
   const c1 = Math.ceil(pool.length / 3);
-  const c2 = Math.ceil((2 * pool.length) / 3);
+  const c2 = Math.ceil(2 * pool.length / 3);
   pool.forEach((m, i) => {
     const tier = overrideFor(m, overrides) ?? (i < c1 ? "cheap" : i < c2 ? "mid" : "frontier");
     tiers[tier].push(m);
   });
   return tiers;
 }
-
-// One line per provider per tier: "provider: id ($in/$out), id ($in/$out)".
-// Compact on purpose — this is injected every turn and pools run to hundreds.
 function tierLines(tierModels) {
-  const byProvider = new Map();
+  const byProvider = /* @__PURE__ */ new Map();
   for (const m of tierModels) {
     if (!byProvider.has(m.provider)) byProvider.set(m.provider, []);
     byProvider.get(m.provider).push(m);
   }
-  return [...byProvider.entries()]
-    .map(
-      ([provider, ms]) =>
-        `- ${provider}: ${ms.map((m) => `${m.id} ($${m.cost?.input ?? 0}/$${m.cost?.output ?? 0})`).join(", ")}`,
-    )
-    .join("\n");
+  return [...byProvider.entries()].map(
+    ([provider, ms]) => `- ${provider}: ${ms.map((m) => `${m.id} ($${m.cost?.input ?? 0}/$${m.cost?.output ?? 0})`).join(", ")}`
+  ).join("\n");
 }
-
-const MODE_RULES = {
+var MODE_RULES = {
   cost: `- Route each task to the cheapest tier plausibly adequate for it; well-specified mechanical work goes to cheap.
 - Escalate one tier when a review fails; reach frontier only for genuinely hard tasks.`,
   performance: `- Route each task to the tier you would bet passes review first try: mechanical work still goes cheap, ambiguous specs and hard reasoning start at frontier, and any doubt moves you up a tier.
-- Do not default to the priciest model; unnecessary capability is waste, not safety.`,
+- Do not default to the priciest model; unnecessary capability is waste, not safety.`
 };
-
-export function buildPolicy(models, { mode = "cost", overrides = {}, selfId } = {}) {
+function buildPolicy(models, { mode = "cost", overrides = {}, selfId } = {}) {
   const tiers = assignTiers(models, { overrides, selfId });
   const total = TIERS.reduce((n, t) => n + tiers[t].length, 0);
-
-  const ladder =
-    total === 0
-      ? "No other models are configured; do all work yourself."
-      : TIERS.filter((t) => tiers[t].length > 0)
-          .map((t) => `### ${t}\n${tierLines(tiers[t])}`)
-          .join("\n");
-
+  const ladder = total === 0 ? "No other models are configured; do all work yourself." : TIERS.filter((t) => tiers[t].length > 0).map((t) => `### ${t}
+${tierLines(tiers[t])}`).join("\n");
   return `<subagent-routing>
 You are the orchestrator. Plan, spec, and judge yourself; fan implementation out to subagents and grade their work before accepting it. Your live model is stated in the <active-model> callout in your context; route relative to it (if you are already a cheap or local model, do the work yourself).
 
@@ -95,7 +67,7 @@ Every configured model, tiered by price ($input/$output per Mtok). Reference one
 ${ladder}
 Tiers are price-derived; where you know a listed model's real capability class, trust your own knowledge over its tier.
 
-## Routing (mode: ${mode} — switch with /subagent-routing cost|performance)
+## Routing (mode: ${mode} \u2014 switch with /subagent-routing cost|performance)
 When you spawn a subagent with Agent(...):
 ${MODE_RULES[mode] ?? MODE_RULES.cost}
 - Hard reasoning, ambiguous specs, or a retry after the ladder is exhausted -> your own model: spawn WITHOUT a \`model\` override, so the subagent inherits the model you are running.
@@ -111,3 +83,55 @@ Never accept a subagent result blindly: a summary says what the agent intended, 
 Escalation ladder: cheap -> mid -> frontier -> your own model. Ship nothing a reviewer has not passed. Stop after two failed reviews of the same task and report to the user; do not keep climbing the ladder on your own.
 </subagent-routing>`;
 }
+
+// subagent-routing/extensions/index.ts
+var CONFIG_PATH = join(
+  process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent"),
+  "subagent-routing.json"
+);
+function loadConfig() {
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+  } catch {
+    raw = {};
+  }
+  return {
+    mode: MODES.includes(raw?.mode) ? raw.mode : "cost",
+    tiers: typeof raw?.tiers === "object" && raw?.tiers !== null ? raw.tiers : {}
+  };
+}
+function subagentRouting(pi) {
+  pi.registerCommand("subagent-routing", {
+    description: `Subagent fan-out mode (${MODES.join(" | ")})`,
+    handler: async (args, ctx) => {
+      const config = loadConfig();
+      const next = args?.trim();
+      if (!next) {
+        ctx.ui.notify(`subagent-routing mode: ${config.mode}`, "info");
+        return;
+      }
+      if (!MODES.includes(next)) {
+        ctx.ui.notify(`unknown mode "${next}" \u2014 use ${MODES.join(", ")}`, "error");
+        return;
+      }
+      config.mode = next;
+      mkdirSync(dirname(CONFIG_PATH), { recursive: true });
+      writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n");
+      ctx.ui.notify(`subagent-routing mode: ${next} (applies next turn)`, "info");
+    }
+  });
+  pi.on("before_agent_start", async (event, ctx) => {
+    const { mode, tiers } = loadConfig();
+    const reg = ctx.modelRegistry;
+    const models = reg.getAvailable?.() ?? reg.getAll();
+    const selfId = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : void 0;
+    const policy = buildPolicy(models, { mode, overrides: tiers, selfId });
+    return { systemPrompt: `${event.systemPrompt}
+
+${policy}` };
+  });
+}
+export {
+  subagentRouting as default
+};

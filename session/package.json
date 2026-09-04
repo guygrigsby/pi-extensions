@@ -1,21 +1,20 @@
 {
-  "name": "@guygrigsby/pi-lean",
-  "version": "0.4.2",
+  "name": "@guygrigsby/pi-session",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Collapse every pi tool call to a single line and keep the agent's prose short and dense. Claude-Code-style compact TUI for the pi coding agent.",
+  "description": "Stamp every pi provider request with a session id header and an enriched User-Agent (pi version, OS, distro) so aperture can group calls into sessions.",
   "keywords": [
     "pi-package",
     "pi",
     "extension",
-    "tui",
-    "compact",
-    "tools"
+    "aperture",
+    "session"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/guygrigsby/pi-extensions.git",
-    "directory": "lean"
+    "directory": "session"
   },
   "author": {
     "name": "Guy J Grigsby"
@@ -23,7 +22,6 @@
   "files": [
     "extensions/",
     "dist/",
-    "themes/",
     "tests/",
     "README.md"
   ],
@@ -33,13 +31,9 @@
   "pi": {
     "extensions": [
       "./dist/index.js"
-    ],
-    "themes": [
-      "./themes"
     ]
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-coding-agent": "*"
   }
 }
