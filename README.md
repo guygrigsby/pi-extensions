@@ -4,6 +4,7 @@ Extensions and packages for [pi](https://github.com/earendil-works/pi). Each sub
 
 | Package | What it is |
 | ------- | ---------- |
+| [`aperture-models/`](aperture-models/) | Auto-discover Aperture models: fetch `GET <endpoint>/api/agent-config` on load and on `/model`, registering every pi provider slot so the served models appear without a copy/pasted `models.json` block. `APERTURE_URL` sets the endpoint. |
 | [`active-model/`](active-model/) | Inject a live call-out of the currently-active model into the system prompt each turn, so the orchestrator knows which model it is running and can route accordingly. |
 | [`claude-aliases/`](claude-aliases/) | Claude-Code-style slash commands for pi: `/exit` and `/clear`. |
 | [`claude-memory/`](claude-memory/) | Read-only: inject the Claude Code project memory (`MEMORY.md` and fact files) into a pi session's context. Never writes. |
