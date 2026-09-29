@@ -45,6 +45,14 @@ test("apertureEndpoint defaults to the corp instance and trims trailing slashes"
   assert.equal(apertureEndpoint({ APERTURE_URL: "" }), DEFAULT_ENDPOINT);
 });
 
+test("apertureEndpoint accepts the /v1 base URL other Aperture clients already use", () => {
+  assert.equal(
+    apertureEndpoint({ APERTURE_URL: "https://megavisor-aperture-1.corp.ts.net/v1" }),
+    "https://megavisor-aperture-1.corp.ts.net",
+  );
+  assert.equal(apertureEndpoint({ APERTURE_URL: "http://bee.tailnet:8080/v1/" }), "http://bee.tailnet:8080");
+});
+
 test("fetchPiConfig parses the pi slot out of the agent-config document", async () => {
   const slots = await fetchPiConfig(DEFAULT_ENDPOINT, stubFetch(AGENT_CONFIG));
   assert.deepEqual(

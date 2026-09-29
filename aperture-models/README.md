@@ -10,7 +10,7 @@ Aperture renders only model ids today, so pi's `models.json` defaults apply (128
 
 ## Config
 
-`APERTURE_URL` sets the endpoint. Default `https://ai.corp.ts.net`.
+`APERTURE_URL` sets the endpoint, with or without the `/v1` suffix other Aperture clients use. Default `https://ai.corp.ts.net`.
 
 ## Install
 

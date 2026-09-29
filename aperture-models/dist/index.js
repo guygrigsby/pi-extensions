@@ -2,7 +2,7 @@
 var DEFAULT_ENDPOINT = "https://ai.corp.ts.net";
 function apertureEndpoint(env) {
   const raw = typeof env.APERTURE_URL === "string" ? env.APERTURE_URL.trim() : "";
-  return (raw || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+  return (raw || DEFAULT_ENDPOINT).replace(/\/+$/, "").replace(/\/v1$/, "");
 }
 async function fetchPiConfig(endpoint, fetchImpl, signal) {
   const url = `${endpoint}/api/agent-config`;

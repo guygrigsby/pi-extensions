@@ -10,10 +10,14 @@
 
 export const DEFAULT_ENDPOINT = "https://ai.corp.ts.net";
 
-/** apertureEndpoint resolves the Aperture base URL from the environment. */
+/**
+ * apertureEndpoint resolves the Aperture base URL from the environment.
+ * Aperture's other clients (codex, MCP, the OpenAI slots) take the URL with
+ * /v1 on it, so one APERTURE_URL is shared; agent-config lives at the root.
+ */
 export function apertureEndpoint(env) {
   const raw = typeof env.APERTURE_URL === "string" ? env.APERTURE_URL.trim() : "";
-  return (raw || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+  return (raw || DEFAULT_ENDPOINT).replace(/\/+$/, "").replace(/\/v1$/, "");
 }
 
 /**
