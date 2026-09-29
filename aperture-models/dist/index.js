@@ -1,8 +1,24 @@
+// aperture-models/extensions/index.ts
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
+
 // aperture-models/extensions/aperture-core.mjs
 var DEFAULT_ENDPOINT = "https://ai.corp.ts.net";
-function apertureEndpoint(env) {
+function apertureEndpoint(env, modelsJson2) {
   const raw = typeof env.APERTURE_URL === "string" ? env.APERTURE_URL.trim() : "";
-  return (raw || DEFAULT_ENDPOINT).replace(/\/+$/, "").replace(/\/v1$/, "");
+  return normalize(raw || configuredEndpoint(modelsJson2) || DEFAULT_ENDPOINT);
+}
+function normalize(url) {
+  return url.replace(/\/+$/, "").replace(/\/v1$/, "");
+}
+function configuredEndpoint(doc) {
+  const providers = doc?.providers;
+  if (providers == null || typeof providers !== "object") return "";
+  for (const [id, p] of Object.entries(providers)) {
+    if (id.startsWith("aperture-") && typeof p?.baseUrl === "string" && p.baseUrl.trim()) return p.baseUrl.trim();
+  }
+  return "";
 }
 async function fetchPiConfig(endpoint, fetchImpl, signal) {
   const url = `${endpoint}/api/agent-config`;
@@ -47,7 +63,7 @@ function chatModel(entry) {
 var BOOT_TIMEOUT_MS = 5e3;
 var REFRESH_TIMEOUT_MS = 15e3;
 async function apertureModels(pi) {
-  const endpoint = apertureEndpoint(process.env);
+  const endpoint = apertureEndpoint(process.env, await modelsJson());
   let inflight = null;
   const discover = (signal) => {
     inflight ??= fetchPiConfig(endpoint, globalThis.fetch, signal).finally(() => {
@@ -84,15 +100,20 @@ async function apertureModels(pi) {
     });
   }
   pi.on("session_start", async (_event, ctx) => {
+    const warn = (msg) => ctx.hasUI ? ctx.ui.notify(msg, "warning") : console.error(`Warning: ${msg}`);
     if (loadError) {
-      ctx.ui.notify(
-        `aperture-models: discovery failed (${loadError}). Check the tailnet connection and APERTURE_URL, then /reload.`,
-        "warning"
-      );
+      warn(`aperture-models: discovery failed (${loadError}). Check the tailnet connection and APERTURE_URL, then /reload.`);
     } else if (slots.length === 0) {
-      ctx.ui.notify(`aperture-models: ${endpoint} serves no pi models.`, "warning");
+      warn(`aperture-models: ${endpoint} serves no pi models.`);
     }
   });
+}
+async function modelsJson() {
+  try {
+    return JSON.parse(await readFile(join(getAgentDir(), "models.json"), "utf8"));
+  } catch {
+    return void 0;
+  }
 }
 export {
   apertureModels as default
