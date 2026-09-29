@@ -1,6 +1,6 @@
 {
   "name": "@guygrigsby/pi-image-paste",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Paste images from the Mac clipboard into pi running on a remote machine over ssh. A launchd socket service on the Mac serves the clipboard image; an ssh RemoteForward carries it; the extension fetches it on ctrl+v and attaches it like a native paste.",
   "keywords": [

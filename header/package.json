@@ -1,6 +1,6 @@
 {
   "name": "@guygrigsby/pi-header",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Replace pi's startup header with a framed two-column box: block π and greeting beside tips and what's new.",
   "keywords": [
