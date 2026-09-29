@@ -12,6 +12,7 @@
 #   make changed   print packages changed since their last version bump
 #   make bump      patch-bump those packages
 #   make release   test, bump, commit, publish (needs a clean tree)
+#   make publish PKGS=aperture-models   publish one package
 
 PI      ?= pi
 NPM     ?= npm
@@ -55,6 +56,7 @@ local: build
 redeploy: install
 
 test: build
+	@node --test tests/*.test.mjs
 	@for p in $(PKGS); do \
 		grep -q '"test"' "$$p/package.json" && { echo "==> test $$p"; ( cd "$$p" && npm test ) || exit 1; } || true; \
 	done
@@ -84,19 +86,21 @@ release:
 	git commit -m "bump patch: $$(echo $$pkgs)" || exit 1; \
 	$(MAKE) publish
 
-# Publish every package to npm (unscoped, public). Patch-bumps changed
-# packages first, so re-publishing never collides with an existing version.
+# Publish every package to npm with public access. Patch-bumps changed
+# packages first. A failed package must not block the remaining packages;
+# return failure after attempting the whole batch.
 # Version bumps land uncommitted; `make release` is the committing path.
 publish: build bump
-	@for p in $(PKGS); do \
+	@failed=0; for p in $(PKGS); do \
 		name=$$(node -p "require('./$$p/package.json').name"); \
 		ver=$$(node -p "require('./$$p/package.json').version"); \
 		if $(NPM) view "$$name@$$ver" version >/dev/null 2>&1; then \
 			echo "== skip $$p ($$name@$$ver already published)"; \
 		else \
-			echo "==> npm publish $$p ($$name@$$ver)"; ( cd "$$p" && $(NPM) publish --access public ) || exit 1; \
+			echo "==> npm publish $$p ($$name@$$ver)"; \
+			( cd "$$p" && $(NPM) publish --access public ) || { echo "== failed $$p ($$name@$$ver)" >&2; failed=1; }; \
 		fi; \
-	done
+	done; exit $$failed
 
 publish-dry: build
 	@for p in $(PKGS); do echo "==> npm publish --dry-run $$p"; ( cd "$$p" && $(NPM) publish --dry-run --access public ) || exit 1; done
