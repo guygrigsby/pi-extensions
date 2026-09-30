@@ -1,0 +1,41 @@
+{
+	"name": "@guygrigsby/pi-statusline",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Replace pi's built-in footer with one line: model icon + provider:model, repo name, git branch.",
+	"keywords": [
+		"pi-package",
+		"pi",
+		"extension",
+		"tui",
+		"footer",
+		"statusline"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/guygrigsby/pi-extensions.git",
+		"directory": "statusline"
+	},
+	"author": {
+		"name": "Guy J Grigsby"
+	},
+	"files": [
+		"extensions/",
+		"dist/",
+		"tests/",
+		"README.md"
+	],
+	"scripts": {
+		"test": "node --test"
+	},
+	"pi": {
+		"extensions": [
+			"./dist/index.js"
+		]
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	}
+}
