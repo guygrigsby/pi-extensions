@@ -1,6 +1,6 @@
 {
   "name": "@guygrigsby/pi-aperture-models",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Auto-discover Aperture models: point pi at an Aperture endpoint and every served model appears in /model, no models.json copy/paste.",
   "keywords": [
