@@ -133,7 +133,18 @@ test("policy caps turns, reviews the diff on mid, and stops after two failures",
   assert.match(p, /maxTurns/);
   assert.match(p, /Hand the reviewer the diff itself/);
   assert.match(p, /Route the reviewer to mid for mechanical tasks/);
+  assert.match(p, /re-spawn higher with the review findings included/);
+  assert.match(p, /Never a blind retry/);
   assert.match(p, /Stop after two failed reviews/);
+});
+
+test("judge mode swaps review steps but keeps the fallback and the findings feed", () => {
+  const p = buildPolicy(models, { mode: "cost", judge: true });
+  assert.match(p, /call the `judge` tool/);
+  assert.match(p, /re-spawn higher with the findings included/);
+  assert.match(p, /Never a blind retry/);
+  assert.match(p, /reviewer subagent/);
+  assert.doesNotMatch(p, /Hand the reviewer the diff itself/);
 });
 
 test("policy says do it yourself when nothing else is configured", () => {

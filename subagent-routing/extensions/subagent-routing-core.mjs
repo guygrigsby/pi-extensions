@@ -93,12 +93,12 @@ const MODE_RULES = {
 // grades the routine diffs; the reviewer subagent remains for errors,
 // disputes and security-sensitive work.
 const REVIEW_STEPS = {
-  subagent: `1. After it returns, spawn a reviewer subagent (Agent subagent_type: "reviewer") to grade the actual changes against the task. Hand the reviewer the diff itself (file list, \`git diff\`, or commit range), never the worker's self-report. Route the reviewer to mid for mechanical tasks; use your own model (no \`model\` override) only for a dispute, a second failed review, or a security-sensitive diff.
+  subagent: `1. After it returns, spawn a reviewer subagent (Agent subagent_type: "reviewer") to grade the actual changes against the task. Hand the reviewer the diff itself (file list, \`git diff\` or commit range), never the worker's self-report. Route the reviewer to mid for mechanical tasks; use your own model (no \`model\` override) only for a dispute, a second failed review or a security-sensitive diff.
 2. If the reviewer approves it, accept.
-3. If it fails, either fix it yourself or re-spawn the task one tier up, then review again.`,
-  judge: `1. After it returns, call the \`judge\` tool with the task and the actual changes (file list, \`git diff\`, or commit range — never the worker's self-report). Jev grades the evidence and returns pass/fail with a probability.
-2. Pass -> accept. Fail -> either fix it yourself or re-spawn the task one tier up, then judge again.
-3. On a \`judge\` error, a verdict you dispute, or a security-sensitive diff, spawn a reviewer subagent (Agent subagent_type: "reviewer") on your own model (no \`model\` override) instead.`,
+3. If it fails, either fix it yourself or re-spawn higher with the review findings included, then review again. Never a blind retry.`,
+  judge: `1. After it returns, call the \`judge\` tool with the task and the actual changes (file list, \`git diff\` or commit range — never the worker's self-report). Jev grades the evidence and returns pass/fail with a probability.
+2. Pass -> accept. Fail -> either fix it yourself or re-spawn higher with the findings included, then judge again. Never a blind retry.
+3. On a \`judge\` error, a verdict you dispute or a security-sensitive diff, spawn a reviewer subagent (Agent subagent_type: "reviewer") on your own model (no \`model\` override) instead.`,
 };
 
 export function buildPolicy(models, { mode = "cost", overrides = {}, selfId, judge = false } = {}) {
