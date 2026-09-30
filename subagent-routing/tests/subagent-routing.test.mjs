@@ -6,7 +6,16 @@ import {
   assignTiers,
   buildPolicy,
   costScore,
+  applyPricing,
 } from "../extensions/subagent-routing-core.mjs";
+import {
+  distillModelsDev,
+  distillVercel,
+  fetchPricing,
+  normalizeModelId,
+  pricingStale,
+} from "../extensions/pricing.mjs";
+import { evaluate } from "../extensions/jev.mjs";
 
 const models = [
   { provider: "mlx", id: "coder", cost: { input: 0, output: 0 } },
@@ -130,4 +139,138 @@ test("policy caps turns, reviews the diff on mid, and stops after two failures",
 test("policy says do it yourself when nothing else is configured", () => {
   const p = buildPolicy([{ provider: "moonshotai", id: "kimi-k3" }], { selfId: "moonshotai/kimi-k3" });
   assert.match(p, /do all work yourself/);
+});
+
+// --- pricing fallback ---
+
+test("normalizeModelId keys on the model tail, ignoring case and separators", () => {
+  assert.equal(normalizeModelId("anthropic/claude-haiku-4.5"), "claudehaiku45");
+  assert.equal(normalizeModelId("claude_haiku_4_5"), "claudehaiku45");
+  assert.equal(normalizeModelId(undefined), "");
+});
+
+test("distillModelsDev keeps numeric per-Mtok prices, cheapest wins collisions", () => {
+  const prices = distillModelsDev({
+    anthropic: { models: { "claude-haiku-4.5": { cost: { input: 1, output: 5 } } } },
+    openrouter: {
+      models: {
+        "claude-haiku-4.5": { cost: { input: 0.5, output: 2 } },
+        "free-model": { cost: {} },
+      },
+    },
+  });
+  assert.deepEqual(prices, { claudehaiku45: { input: 0.5, output: 2 } });
+});
+
+test("distillVercel converts string per-token prices to per-Mtok", () => {
+  const prices = distillVercel({
+    data: [
+      { id: "moonshotai/kimi-k3", pricing: { input: "0.000001", output: "0.000002" } },
+      { id: "broken", pricing: { input: "nope" } },
+    ],
+  });
+  assert.deepEqual(prices, { kimik3: { input: 1, output: 2 } });
+});
+
+test("fetchPricing prefers models.dev, falls back to vercel, throws when both fail", async () => {
+  const ok = (body) => async () => ({ ok: true, json: async () => body });
+  const modelsDev = { anthropic: { models: { "claude-sonnet-5": { cost: { input: 3, output: 15 } } } } };
+  const vercel = { data: [{ id: "claude-sonnet-5", pricing: { input: "0.000003", output: "0.000015" } }] };
+  assert.equal((await fetchPricing({ fetchImpl: ok(modelsDev) })).source, "models.dev");
+  const fallback = await fetchPricing({ fetchImpl: (url) => (String(url).includes("models.dev") ? { ok: false } : ok(vercel)()) });
+  assert.equal(fallback.source, "vercel");
+  await assert.rejects(fetchPricing({ fetchImpl: async () => { throw new Error("down"); } }));
+});
+
+test("applyPricing backfills zero-priced models only, registry wins where priced", () => {
+  const pool = [
+    { provider: "aperture-anthropic", id: "claude-opus-5-5", cost: { input: 0, output: 0 } },
+    { provider: "anthropic", id: "claude-opus-5-5", cost: { input: 5, output: 25 } },
+    { provider: "mlx", id: "coder", cost: { input: 0, output: 0 } },
+  ];
+  const prices = { claudeopus55: { input: 5, output: 25 } };
+  const priced = applyPricing(pool, prices, normalizeModelId);
+  assert.deepEqual(priced[0].cost, { input: 5, output: 25 });
+  assert.deepEqual(priced[1].cost, { input: 5, output: 25 });
+  assert.deepEqual(priced[2].cost, { input: 0, output: 0 });
+  assert.equal(applyPricing(pool, null, normalizeModelId), pool);
+});
+
+test("pricingStale flags missing fetchedAt and caches older than a day", () => {
+  assert.equal(pricingStale(null), true);
+  assert.equal(pricingStale({ fetchedAt: Date.now() }), false);
+  assert.equal(pricingStale({ fetchedAt: Date.now() - 25 * 3600_000 }), true);
+});
+
+// --- jev judge ---
+
+function judgeFetch(response) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (response instanceof Error) throw response;
+    return { ok: true, text: async () => JSON.stringify(response) };
+  };
+  fetchImpl.calls = calls;
+  return fetchImpl;
+}
+
+const verdict = { answers: { pass: { type: "boolean", probability: 0.93 } }, model: "jev", usage: { tokens: 1 } };
+
+test("evaluate posts the protocol headers and state, returns the verdict", async () => {
+  const fetchImpl = judgeFetch(verdict);
+  const v = await evaluate(
+    { endpoint: "https://example.com/v4/ai/evaluation-model", apiKey: "k", task: "t", evidence: "e" },
+    { fetchImpl },
+  );
+  const { url, init } = fetchImpl.calls[0];
+  assert.equal(url, "https://example.com/v4/ai/evaluation-model");
+  assert.equal(init.headers.Authorization, "Bearer k");
+  assert.equal(init.headers["ai-model-id"], "typesafe-ai/jev");
+  const body = JSON.parse(init.body);
+  assert.equal(body.state.task, "t");
+  assert.equal(body.state.changes, "e");
+  assert.equal(body.questions.pass.type, "boolean");
+  assert.deepEqual(v, { pass: true, probability: 0.93, model: "jev", usage: { tokens: 1 } });
+});
+
+test("evaluate truncates to the 24KB cap with evidence getting the larger share", async () => {
+  const fetchImpl = judgeFetch(verdict);
+  await evaluate(
+    { endpoint: "https://example.com/j", apiKey: "k", task: "t".repeat(99_999), evidence: "e".repeat(99_999) },
+    { fetchImpl },
+  );
+  assert.ok(fetchImpl.calls[0].init.body.length <= 24 * 1024);
+  const body = JSON.parse(fetchImpl.calls[0].init.body);
+  assert.equal(body.state.task.length, 7850);
+  assert.equal(body.state.changes.length, 15_702);
+  assert.ok(body.state.changes.length > body.state.task.length);
+});
+
+test("evaluate grades pass at the 0.5 probability boundary", async () => {
+  const pass = await evaluate(
+    { endpoint: "https://example.com/j", apiKey: "k", task: "t", evidence: "e" },
+    { fetchImpl: judgeFetch({ answers: { pass: { type: "boolean", probability: 0.5 } } }) },
+  );
+  const fail = await evaluate(
+    { endpoint: "https://example.com/j", apiKey: "k", task: "t", evidence: "e" },
+    { fetchImpl: judgeFetch({ answers: { pass: { type: "boolean", probability: 0.49 } } }) },
+  );
+  assert.equal(pass.pass, true);
+  assert.equal(fail.pass, false);
+});
+
+test("evaluate rejects bad endpoints, HTTP errors, malformed responses, and timeouts", async () => {
+  const args = { apiKey: "k", task: "t", evidence: "e" };
+  for (const endpoint of ["ftp://example.com/j", "https://k@example.com/j", "https://example.com/j?x=1"]) {
+    await assert.rejects(evaluate({ ...args, endpoint }, { fetchImpl: judgeFetch(verdict) }), /endpoint/);
+  }
+  const notOk = async () => ({ ok: false, status: 503, text: async () => "" });
+  await assert.rejects(evaluate({ ...args, endpoint: "https://example.com/j" }, { fetchImpl: notOk }), /HTTP 503/);
+  const notJson = async () => ({ ok: true, text: async () => "<html>" });
+  await assert.rejects(evaluate({ ...args, endpoint: "https://example.com/j" }, { fetchImpl: notJson }), /not valid/);
+  const missingAnswer = async () => ({ ok: true, text: async () => JSON.stringify({ answers: {} }) });
+  await assert.rejects(evaluate({ ...args, endpoint: "https://example.com/j" }, { fetchImpl: missingAnswer }), /boolean answer/);
+  const timeout = async () => { throw Object.assign(new Error(), { name: "TimeoutError" }); };
+  await assert.rejects(evaluate({ ...args, endpoint: "https://example.com/j" }, { fetchImpl: timeout }), /timed out/);
 });

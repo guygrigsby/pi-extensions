@@ -5,11 +5,24 @@
 export const MODES = ["cost", "performance"];
 export const TIERS = ["cheap", "mid", "frontier"];
 
-// Per-Mtok blended rate. Subscription models (kimi-coding) report 0 and rank
-// as cheapest; pin them with a tier override where price lies about them.
+// Per-Mtok blended rate. Models the registry prices at 0 (the whole
+// aperture-anthropic provider, subscription models) rank as cheapest unless
+// applyPricing backfills them; pin stragglers with a tier override.
 export function costScore(model) {
   const c = model.cost ?? {};
   return (c.input ?? 0) + (c.output ?? 0);
+}
+
+// Fill models that report no price (missing or all-zero cost) from a fallback
+// pricing table keyed by normalizeModelId. Priced models pass through
+// untouched, so the registry always wins over the fallback.
+export function applyPricing(models, prices, normalize) {
+  if (!prices) return models;
+  return models.map((m) => {
+    if (costScore(m) !== 0) return m;
+    const price = prices[normalize(m.id)];
+    return price ? { ...m, cost: { input: price.input, output: price.output } } : m;
+  });
 }
 
 // ponytail: mlx is the only local provider; extend if that changes
@@ -76,7 +89,19 @@ const MODE_RULES = {
 - Do not default to the priciest model; unnecessary capability is waste, not safety.`,
 };
 
-export function buildPolicy(models, { mode = "cost", overrides = {}, selfId } = {}) {
+// The review step with and without the judge tool. With Jev configured it
+// grades the routine diffs; the reviewer subagent remains for errors,
+// disputes and security-sensitive work.
+const REVIEW_STEPS = {
+  subagent: `1. After it returns, spawn a reviewer subagent (Agent subagent_type: "reviewer") to grade the actual changes against the task. Hand the reviewer the diff itself (file list, \`git diff\`, or commit range), never the worker's self-report. Route the reviewer to mid for mechanical tasks; use your own model (no \`model\` override) only for a dispute, a second failed review, or a security-sensitive diff.
+2. If the reviewer approves it, accept.
+3. If it fails, either fix it yourself or re-spawn the task one tier up, then review again.`,
+  judge: `1. After it returns, call the \`judge\` tool with the task and the actual changes (file list, \`git diff\`, or commit range — never the worker's self-report). Jev grades the evidence and returns pass/fail with a probability.
+2. Pass -> accept. Fail -> either fix it yourself or re-spawn the task one tier up, then judge again.
+3. On a \`judge\` error, a verdict you dispute, or a security-sensitive diff, spawn a reviewer subagent (Agent subagent_type: "reviewer") on your own model (no \`model\` override) instead.`,
+};
+
+export function buildPolicy(models, { mode = "cost", overrides = {}, selfId, judge = false } = {}) {
   const tiers = assignTiers(models, { overrides, selfId });
   const total = TIERS.reduce((n, t) => n + tiers[t].length, 0);
 
@@ -105,9 +130,7 @@ Always pass a \`maxTurns\` budget: ~15 for mechanical cheap-tier tasks, ~40 for 
 
 ## Judge and escalate
 Never accept a subagent result blindly: a summary says what the agent intended, not what it did.
-1. After it returns, spawn a reviewer subagent (Agent subagent_type: "reviewer") to grade the actual changes against the task. Hand the reviewer the diff itself (file list, \`git diff\`, or commit range), never the worker's self-report. Route the reviewer to mid for mechanical tasks; use your own model (no \`model\` override) only for a dispute, a second failed review, or a security-sensitive diff.
-2. If the reviewer approves it, accept.
-3. If it fails, either fix it yourself or re-spawn the task one tier up, then review again.
-Escalation ladder: cheap -> mid -> frontier -> your own model. Ship nothing a reviewer has not passed. Stop after two failed reviews of the same task and report to the user; do not keep climbing the ladder on your own.
+${judge ? REVIEW_STEPS.judge : REVIEW_STEPS.subagent}
+Escalation ladder: cheap -> mid -> frontier -> your own model. Ship nothing that has not passed review. Stop after two failed reviews of the same task and report to the user; do not keep climbing the ladder on your own.
 </subagent-routing>`;
 }
