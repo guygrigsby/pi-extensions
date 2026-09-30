@@ -10,10 +10,29 @@
 
 export const DEFAULT_ENDPOINT = "https://ai.corp.ts.net";
 
-/** apertureEndpoint resolves the Aperture base URL from the environment. */
-export function apertureEndpoint(env) {
+/**
+ * apertureEndpoint resolves the Aperture base URL. APERTURE_URL wins, then
+ * the baseUrl of an aperture-* provider in pi's models.json, then the
+ * default. Aperture's other clients take the URL with /v1 on it, so a
+ * trailing /v1 is stripped; agent-config lives at the root.
+ */
+export function apertureEndpoint(env, modelsJson) {
   const raw = typeof env.APERTURE_URL === "string" ? env.APERTURE_URL.trim() : "";
-  return (raw || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+  return normalize(raw || configuredEndpoint(modelsJson) || DEFAULT_ENDPOINT);
+}
+
+function normalize(url) {
+  return url.replace(/\/+$/, "").replace(/\/v1$/, "");
+}
+
+/** configuredEndpoint returns the first aperture-* provider baseUrl in a parsed models.json, or "". */
+function configuredEndpoint(doc) {
+  const providers = doc?.providers;
+  if (providers == null || typeof providers !== "object") return "";
+  for (const [id, p] of Object.entries(providers)) {
+    if (id.startsWith("aperture-") && typeof p?.baseUrl === "string" && p.baseUrl.trim()) return p.baseUrl.trim();
+  }
+  return "";
 }
 
 /**

@@ -6,10 +6,13 @@
  * when pi refreshes catalogs (opening /model). Replaces the copy/pasted
  * models.json block from Aperture's setup guide.
  *
- * Endpoint: $APERTURE_URL, default https://ai.corp.ts.net.
+ * Endpoint: $APERTURE_URL, else the aperture-* provider baseUrl already in
+ * models.json, else https://ai.corp.ts.net.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { apertureEndpoint, fetchPiConfig } from "./aperture-core.mjs";
 
 const BOOT_TIMEOUT_MS = 5000;
@@ -24,7 +27,7 @@ interface Slot {
 }
 
 export default async function apertureModels(pi: ExtensionAPI): Promise<void> {
-  const endpoint = apertureEndpoint(process.env);
+  const endpoint = apertureEndpoint(process.env, await modelsJson());
 
   // discover fetches the agent-config document, deduplicating concurrent
   // calls: pi refreshes every registered provider in one burst, and one
@@ -71,13 +74,22 @@ export default async function apertureModels(pi: ExtensionAPI): Promise<void> {
   }
 
   pi.on("session_start", async (_event: any, ctx: any) => {
+    // Print and JSON modes have no UI, so notify is a no-op there; stderr
+    // is the only place a load failure can surface.
+    const warn = (msg: string) => (ctx.hasUI ? ctx.ui.notify(msg, "warning") : console.error(`Warning: ${msg}`));
     if (loadError) {
-      ctx.ui.notify(
-        `aperture-models: discovery failed (${loadError}). Check the tailnet connection and APERTURE_URL, then /reload.`,
-        "warning",
-      );
+      warn(`aperture-models: discovery failed (${loadError}). Check the tailnet connection and APERTURE_URL, then /reload.`);
     } else if (slots.length === 0) {
-      ctx.ui.notify(`aperture-models: ${endpoint} serves no pi models.`, "warning");
+      warn(`aperture-models: ${endpoint} serves no pi models.`);
     }
   });
+}
+
+/** modelsJson returns pi's parsed models.json, or undefined when absent or unreadable. */
+async function modelsJson(): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(join(getAgentDir(), "models.json"), "utf8"));
+  } catch {
+    return undefined;
+  }
 }

@@ -45,6 +45,38 @@ test("apertureEndpoint defaults to the corp instance and trims trailing slashes"
   assert.equal(apertureEndpoint({ APERTURE_URL: "" }), DEFAULT_ENDPOINT);
 });
 
+test("apertureEndpoint accepts the /v1 base URL other Aperture clients already use", () => {
+  assert.equal(
+    apertureEndpoint({ APERTURE_URL: "https://megavisor-aperture-1.corp.ts.net/v1" }),
+    "https://megavisor-aperture-1.corp.ts.net",
+  );
+  assert.equal(apertureEndpoint({ APERTURE_URL: "http://bee.tailnet:8080/v1/" }), "http://bee.tailnet:8080");
+});
+
+const MODELS_JSON = {
+  providers: {
+    other: { baseUrl: "http://elsewhere/v1", api: "openai-completions", apiKey: "k" },
+    "aperture-responses": { baseUrl: "https://megavisor-aperture-1.corp.ts.net/v1", api: "openai-responses" },
+    "aperture-anthropic": { baseUrl: "https://megavisor-aperture-1.corp.ts.net", api: "anthropic-messages" },
+  },
+};
+
+test("apertureEndpoint takes the aperture provider baseUrl from models.json when the env is unset", () => {
+  assert.equal(apertureEndpoint({}, MODELS_JSON), "https://megavisor-aperture-1.corp.ts.net");
+  assert.equal(apertureEndpoint({ APERTURE_URL: "" }, MODELS_JSON), "https://megavisor-aperture-1.corp.ts.net");
+});
+
+test("apertureEndpoint lets APERTURE_URL override models.json", () => {
+  assert.equal(apertureEndpoint({ APERTURE_URL: "http://bee.tailnet:8080/v1" }, MODELS_JSON), "http://bee.tailnet:8080");
+});
+
+test("apertureEndpoint falls back to the default when models.json has no aperture provider", () => {
+  assert.equal(apertureEndpoint({}, { providers: { other: { baseUrl: "http://elsewhere" } } }), DEFAULT_ENDPOINT);
+  assert.equal(apertureEndpoint({}, { providers: { "aperture-x": { baseUrl: 7 } } }), DEFAULT_ENDPOINT);
+  assert.equal(apertureEndpoint({}, null), DEFAULT_ENDPOINT);
+  assert.equal(apertureEndpoint({}, "garbage"), DEFAULT_ENDPOINT);
+});
+
 test("fetchPiConfig parses the pi slot out of the agent-config document", async () => {
   const slots = await fetchPiConfig(DEFAULT_ENDPOINT, stubFetch(AGENT_CONFIG));
   assert.deepEqual(
