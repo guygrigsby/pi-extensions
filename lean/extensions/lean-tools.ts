@@ -1,17 +1,18 @@
 /**
- * lean-tools — collapse every tool call to a single, subtle dark-gray line.
+ * lean-tools — collapse every tool call to a single, subtle line.
  *
- *   ▶ Ran shell command
- *   ▶ Read compiler.go
- *   ▶ Edited parser.go (+8 -2)
- *   ▶ Searched "SemanticEditProtocol"
+ *   [terminal] git status  Ran shell command
+ *   [book]     compiler.go  Read
+ *   [pencil]   parser.go  Edited (+8 -2)
+ *   [search]   "SemanticEditProtocol"  Searched
  *
- * Folded is the quiet default (past-tense summary, no command echo, all dim).
- * ctrl+q / `/tools expanded` reveals the real command + full output.
+ * Folded is the quiet default: a Nerd Font icon per operation, the command
+ * muted to its left, then the past-tense summary. ctrl+q / `/tools expanded`
+ * reveals the full output.
  *
  * pi's built-in tool blocks render a full colored shell (the green/red box).
  * pi-foldable-tools strips the shell but still folds to a 2-line card. This
- * goes one further: one line per completed call, no box, with a ▶/▼ caret.
+ * goes one further: one line per completed call, no box, a per-tool icon.
  *
  * How the single line works: pi renders a tool as renderCall (the call header)
  * + renderResult (the result), two stacked components. To fit the summary
@@ -28,9 +29,6 @@
  * Config:
  *   PI_LEAN_MODE     startup mode: folded (default) | expanded | hidden
  *   PI_LEAN_SKIP     tools to force-skip, e.g. "edit,write" (default: none)
- *   PI_LEAN_PREVIEW  off → folded row stays a single line (default: on — the
- *                    first bit of the result shows in accent under the fold)
- *   PI_LEAN_PREVIEW_WIDTH  plain-char cap for the preview (default: terminal)
  *
  * Sharing tools with other renderers: pi rejects an extension outright when two
  * register the same tool, so lean defers registration to session_start and asks
@@ -66,12 +64,11 @@ import { Text } from "@earendil-works/pi-tui";
 import {
 	padTool,
 	toolTarget,
+	foldedCommand,
 	foldSummary,
 	quietLabel,
 	resultText,
-	previewLine,
-	CARET_FOLDED,
-	CARET_EXPANDED,
+	toolIcon,
 	LEAN_TOOLS,
 	parseSkipList,
 	unknownTools,
@@ -87,15 +84,6 @@ function readDefaultMode(): Mode {
 }
 
 let mode: Mode = readDefaultMode();
-
-// The little preview under the fold — first bit of the result in accent.
-// The label says nothing ("Ran shell command"), this is what carries the
-// content. width=0 → no width cap; the TUI clips at the terminal edge.
-let previewEnabled = (process.env.PI_LEAN_PREVIEW || "on").trim().toLowerCase() !== "off";
-function previewWidth(): number {
-	const n = parseInt(process.env.PI_LEAN_PREVIEW_WIDTH || "", 10);
-	return Number.isFinite(n) && n > 0 ? n : 0;
-}
 
 // Tools handed to another renderer. Read once — pi reloads the extension when
 // the environment changes anyway.
@@ -149,26 +137,27 @@ function emptyText(context: ToolRenderContext): Text {
 	return setText(context, "");
 }
 
-function caret(theme: any): string {
-	return theme.fg("dim", `${mode === "expanded" ? CARET_EXPANDED : CARET_FOLDED} `);
+function icon(name: string, theme: any): string {
+	return theme.fg("accent", `${toolIcon(name)} `);
 }
 
-/** `▶ bash   git status` — the bare call line, accent target. Used in expanded. */
+/** `[terminal] bash   git status` — the bare call line, accent target. Used in expanded. */
 function callLine(name: string, args: unknown, theme: any): string {
 	const label = theme.fg("toolTitle", theme.bold(padTool(name)));
 	const target = theme.fg("accent", toolTarget(name, args));
-	return caret(theme) + label + " " + target;
+	return icon(name, theme) + label + " " + target;
 }
 
 /**
- * The folded line — one subtle dark-gray past-tense summary, no command echo:
- *   ▶ Ran shell command
- *   ▶ Edited parser.go (+8 -2)
- *   ▶ Ran shell command  ✗ exit 1
- * Everything dim; only failures take the error color so they still stand out.
+ * The folded line — icon, muted command, then the quiet past-tense summary:
+ *   [terminal] git status  Ran shell command
+ *   [pencil]   parser.go  Edited (+8 -2)
+ *   [terminal] make  Ran shell command  ✗ exit 1
+ * Icon takes the accent, the command is muted, the label stays dim; only
+ * failures take the error color so they still stand out.
  */
 function foldedLine(name: string, args: unknown, result: AgentToolResult, isError: boolean, theme: any): string {
-	let line = caret(theme) + theme.fg("dim", quietLabel(name, args));
+	let line = icon(name, theme) + theme.fg("muted", foldedCommand(name, args)) + theme.fg("dim", `  ${quietLabel(name)}`);
 	const s = foldSummary(name, result, isError) as any;
 	if (s.tone === "edit" && (s.add || s.rem)) {
 		line += theme.fg("dim", ` (+${s.add} -${s.rem})`);
@@ -180,22 +169,9 @@ function foldedLine(name: string, args: unknown, result: AgentToolResult, isErro
 	return line;
 }
 
-/**
- * The accent-colored preview line under the fold: as much of the first
- * meaningful bit of the result as fits. Indented to align with the label,
- * clipped to the configured width (0 = no cap; the TUI clips at the edge).
- */
-function previewRow(name: string, result: AgentToolResult, args: unknown, theme: any): string {
-	if (!previewEnabled) return "";
-	let p = previewLine(name, result, args);
-	if (!p) return "";
-	const w = previewWidth();
-	if (w && p.length > w) p = p.slice(0, Math.max(1, w - 3)) + "...";
-	return "\n  " + theme.fg("accent", p);
-}
-/** Running state: same quiet dim line, no accent, no live output. */
+/** Running state: icon + muted command + quiet label, no suffix or live output. */
 function runningLine(name: string, args: unknown, theme: any): string {
-	return caret(theme) + theme.fg("dim", quietLabel(name, args));
+	return icon(name, theme) + theme.fg("muted", foldedCommand(name, args)) + theme.fg("dim", `  ${quietLabel(name)}`);
 }
 
 function expandedOwn(name: string, result: AgentToolResult, isError: boolean, theme: any): string {
@@ -311,10 +287,8 @@ function registerLean(pi: ExtensionAPI, cwd: string): void {
 					return setText(context, header + "\n" + expandedOwn(name, result, context.isError, theme));
 				}
 
-				// folded — the one line, plus the accent preview under it
-				const line = foldedLine(name, args, result, context.isError, theme);
-				if (name === "edit") return setText(context, line); // counts say enough
-				return setText(context, line + previewRow(name, result, args, theme));
+				// folded — the one line: icon, muted command, quiet label, suffix
+				return setText(context, foldedLine(name, args, result, context.isError, theme));
 			},
 		});
 	}

@@ -12,6 +12,25 @@ import { Text } from "@earendil-works/pi-tui";
 
 // lean/extensions/lean-tools-core.mjs
 var LEAN_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"];
+var TOOL_ICONS = {
+  read: "\uF02D",
+  // nf-fa-book
+  bash: "\uF120",
+  // nf-fa-terminal
+  edit: "\uF040",
+  // nf-fa-pencil
+  write: "\uF0C7",
+  // nf-fa-floppy_o (save)
+  grep: "\uF002",
+  // nf-fa-search
+  find: "\uF07B",
+  // nf-fa-folder
+  ls: "\uF03A"
+  // nf-fa-list
+};
+function toolIcon(name) {
+  return TOOL_ICONS[name] ?? "\u2022";
+}
 function parseSkipList(raw) {
   return new Set(
     String(raw ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
@@ -54,6 +73,11 @@ function toolTarget(name, args) {
       return "";
   }
 }
+var MAX_CMD = 60;
+function foldedCommand(name, args) {
+  const t = toolTarget(name, args);
+  return t.length > MAX_CMD ? t.slice(0, MAX_CMD - 1) + "\u2026" : t;
+}
 function resultText(result) {
   const content = result?.content ?? [];
   return content.filter((c) => c && c.type === "text").map((c) => c.text ?? "").join("\n");
@@ -92,57 +116,22 @@ function foldSummary(name, result, isError) {
   }
   return { tone: "", text: "" };
 }
-var CARET_FOLDED = "\u25B6";
-var CARET_EXPANDED = "\u25BC";
-function squash(s) {
-  return String(s ?? "").replace(/\s+/g, " ").trim();
-}
-var MAX_SOURCE = 300;
-function previewLine(name, result, args) {
-  const text = resultText(result);
-  const details = result?.details ?? {};
-  switch (name) {
-    case "bash": {
-      const out = squash(text.split("\n").map((l) => l.trim()).find(Boolean) ?? "");
-      if (out) return out;
-      return squash(details.stderr ?? "");
-    }
-    case "read": {
-      const m = text.match(/\n1\t([^\n]*)/);
-      const src = m ? squash(m[1]) : squash(text);
-      return src.slice(0, MAX_SOURCE);
-    }
-    case "edit":
-    case "write": {
-      const src = squash(String(args?.content ?? "").split("\n")[0]);
-      return src.slice(0, MAX_SOURCE);
-    }
-    default:
-      return squash(text.split("\n").map((l) => l.trim()).find(Boolean) ?? "");
-  }
-}
-function basename(p) {
-  const s = String(p ?? "").replace(/\/+$/, "");
-  const i = s.lastIndexOf("/");
-  return i >= 0 ? s.slice(i + 1) : s;
-}
-function quietLabel(name, args) {
-  const a = args ?? {};
+function quietLabel(name) {
   switch (name) {
     case "bash":
       return "Ran shell command";
     case "read":
-      return `Read ${basename(a.path)}`;
+      return "Read";
     case "edit":
-      return `Edited ${basename(a.path)}`;
+      return "Edited";
     case "write":
-      return `Wrote ${basename(a.path)}`;
+      return "Wrote";
     case "grep":
-      return `Searched "${String(a.pattern ?? "")}"`;
+      return "Searched";
     case "find":
       return "Searched files";
     case "ls":
-      return `Listed ${basename(a.path) || "directory"}`;
+      return "Listed";
     default:
       return name;
   }
@@ -155,11 +144,6 @@ function readDefaultMode() {
   return v === "expanded" || v === "hidden" ? v : "folded";
 }
 var mode = readDefaultMode();
-var previewEnabled = (process.env.PI_LEAN_PREVIEW || "on").trim().toLowerCase() !== "off";
-function previewWidth() {
-  const n = parseInt(process.env.PI_LEAN_PREVIEW_WIDTH || "", 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
 var skip = parseSkipList(process.env.PI_LEAN_SKIP);
 var leftAlone = new Set(skip);
 var registeredByLean = /* @__PURE__ */ new Set();
@@ -188,16 +172,16 @@ function setText(context, content) {
 function emptyText(context) {
   return setText(context, "");
 }
-function caret(theme) {
-  return theme.fg("dim", `${mode === "expanded" ? CARET_EXPANDED : CARET_FOLDED} `);
+function icon(name, theme) {
+  return theme.fg("accent", `${toolIcon(name)} `);
 }
 function callLine(name, args, theme) {
   const label = theme.fg("toolTitle", theme.bold(padTool(name)));
   const target = theme.fg("accent", toolTarget(name, args));
-  return caret(theme) + label + " " + target;
+  return icon(name, theme) + label + " " + target;
 }
 function foldedLine(name, args, result, isError, theme) {
-  let line = caret(theme) + theme.fg("dim", quietLabel(name, args));
+  let line = icon(name, theme) + theme.fg("muted", foldedCommand(name, args)) + theme.fg("dim", `  ${quietLabel(name)}`);
   const s = foldSummary(name, result, isError);
   if (s.tone === "edit" && (s.add || s.rem)) {
     line += theme.fg("dim", ` (+${s.add} -${s.rem})`);
@@ -208,16 +192,8 @@ function foldedLine(name, args, result, isError, theme) {
   }
   return line;
 }
-function previewRow(name, result, args, theme) {
-  if (!previewEnabled) return "";
-  let p = previewLine(name, result, args);
-  if (!p) return "";
-  const w = previewWidth();
-  if (w && p.length > w) p = p.slice(0, Math.max(1, w - 3)) + "...";
-  return "\n  " + theme.fg("accent", p);
-}
 function runningLine(name, args, theme) {
-  return caret(theme) + theme.fg("dim", quietLabel(name, args));
+  return icon(name, theme) + theme.fg("muted", foldedCommand(name, args)) + theme.fg("dim", `  ${quietLabel(name)}`);
 }
 function expandedOwn(name, result, isError, theme) {
   const text = resultText(result);
@@ -305,9 +281,7 @@ function registerLean(pi, cwd) {
           const header = callLine(name, args, theme);
           return setText(context, header + "\n" + expandedOwn(name, result, context.isError, theme));
         }
-        const line = foldedLine(name, args, result, context.isError, theme);
-        if (name === "edit") return setText(context, line);
-        return setText(context, line + previewRow(name, result, args, theme));
+        return setText(context, foldedLine(name, args, result, context.isError, theme));
       }
     });
   }

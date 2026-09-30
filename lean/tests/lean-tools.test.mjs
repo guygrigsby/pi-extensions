@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import {
 	padTool,
 	toolTarget,
+	foldedCommand,
 	editCounts,
 	foldSummary,
 	quietLabel,
 	resultText,
-	previewLine,
 	lineCount,
+	toolIcon,
+	TOOL_ICONS,
 	parseSkipList,
 	unknownTools,
 	shouldCompactRow,
@@ -76,14 +78,30 @@ test("LEAN_TOOLS is the tool set lean owns", () => {
 	assert.deepEqual(LEAN_TOOLS, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
 });
 
-test("quietLabel: past-tense summary, no command echo, basenames only", () => {
-	assert.equal(quietLabel("bash", { command: "git status && rm -rf x" }), "Ran shell command");
-	assert.equal(quietLabel("read", { path: "src/compiler.go" }), "Read compiler.go");
-	assert.equal(quietLabel("edit", { path: "a/b/parser.go" }), "Edited parser.go");
-	assert.equal(quietLabel("write", { path: "out.txt" }), "Wrote out.txt");
-	assert.equal(quietLabel("grep", { pattern: "SemanticEdit" }), 'Searched "SemanticEdit"');
-	assert.equal(quietLabel("ls", { path: "/tmp/dir/" }), "Listed dir");
-	assert.equal(quietLabel("ls", {}), "Listed directory");
+test("toolIcon maps each lean tool to its Nerd Font glyph", () => {
+	assert.equal(toolIcon("read"), "\uF02D");
+	assert.equal(toolIcon("bash"), "\uF120");
+	assert.equal(toolIcon("edit"), "\uF040");
+	assert.equal(toolIcon("write"), "\uF0C7");
+	assert.equal(toolIcon("grep"), "\uF002");
+	assert.equal(toolIcon("find"), "\uF07B");
+	assert.equal(toolIcon("ls"), "\uF03A");
+	assert.equal(toolIcon("unknown"), "•");
+});
+
+test("TOOL_ICONS covers every tool lean owns", () => {
+	for (const name of LEAN_TOOLS) assert.ok(TOOL_ICONS[name], `missing icon for ${name}`);
+});
+
+test("quietLabel: past-tense verb, target lives in the command column", () => {
+	assert.equal(quietLabel("bash"), "Ran shell command");
+	assert.equal(quietLabel("read"), "Read");
+	assert.equal(quietLabel("edit"), "Edited");
+	assert.equal(quietLabel("write"), "Wrote");
+	assert.equal(quietLabel("grep"), "Searched");
+	assert.equal(quietLabel("find"), "Searched files");
+	assert.equal(quietLabel("ls"), "Listed");
+	assert.equal(quietLabel("unknown"), "unknown");
 });
 
 test("padTool aligns short names, keeps long ones", () => {
@@ -105,6 +123,24 @@ test("toolTarget truncates long bash commands", () => {
 	const out = toolTarget("bash", { command: long });
 	assert.equal(out.length, 120);
 	assert.ok(out.endsWith("..."));
+});
+
+test("foldedCommand returns the target untruncated when short", () => {
+	assert.equal(foldedCommand("bash", { command: "git status" }), "git status");
+	assert.equal(foldedCommand("read", { path: "compiler.go" }), "compiler.go");
+	assert.equal(foldedCommand("grep", { pattern: "SemanticEdit" }), "SemanticEdit");
+});
+
+test("foldedCommand truncates long commands to the folded-column cap", () => {
+	const out = foldedCommand("bash", { command: "x".repeat(200) });
+	assert.equal(out.length, 60);
+	assert.ok(out.endsWith("…"));
+});
+
+test("foldedCommand truncates long paths too", () => {
+	const out = foldedCommand("read", { path: "a/".repeat(60) + "file.go" });
+	assert.equal(out.length, 60);
+	assert.ok(out.endsWith("…"));
 });
 
 test("editCounts ignores +++/--- headers", () => {
@@ -146,39 +182,4 @@ test("resultText joins only text parts", () => {
 	const r = { content: [{ type: "text", text: "a" }, { type: "image" }, { type: "text", text: "b" }] };
 	assert.equal(resultText(r), "a\nb");
 	assert.equal(lineCount(resultText(r)), 2);
-});
-
-test("previewLine: bash shows first output line, squashed", () => {
-	const r = { content: [{ type: "text", text: "  On branch   main  \nnothing to commit" }] };
-	assert.equal(previewLine("bash", r, {}), "On branch main");
-});
-
-test("previewLine: bash falls back to stderr when stdout is empty", () => {
-	const r = { content: [{ type: "text", text: "" }], details: { stderr: "fatal: not a git repo" } };
-	assert.equal(previewLine("bash", r, {}), "fatal: not a git repo");
-});
-
-test("previewLine: bash empty everywhere previews nothing", () => {
-	assert.equal(previewLine("bash", { content: [{ type: "text", text: "\n\n" }] }, {}), "");
-});
-
-test("previewLine: read skips the confirmation header and squashes code", () => {
-	const r = { content: [{ type: "text", text: "Read 42 lines\n1\timport   { x } from 'y';\n2\tconst a = 1;" }] };
-	assert.equal(previewLine("read", r, {}), "import { x } from 'y';");
-});
-
-test("previewLine: edit/write preview the new content's first line", () => {
-	const args = { content: "  # Title\n\nbody text" };
-	assert.equal(previewLine("write", {}, args), "# Title");
-	assert.equal(previewLine("edit", {}, args), "# Title");
-});
-
-test("previewLine: grep previews the first hit", () => {
-	const r = { content: [{ type: "text", text: "src/a.ts:10: match here\nsrc/b.ts:2: other" }] };
-	assert.equal(previewLine("grep", r, {}), "src/a.ts:10: match here");
-});
-
-test("previewLine: huge source content is capped", () => {
-	const args = { content: "x".repeat(500) };
-	assert.equal(previewLine("write", {}, args).length, 300);
 });

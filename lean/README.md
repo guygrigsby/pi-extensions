@@ -3,10 +3,10 @@
 Compact TUI for the [pi coding agent](https://github.com/earendil-works/pi): collapse every tool call to a single line, shrink the user message to a tinted one-liner, strip the blank lines between blocks, and keep the agent's prose short and dense. Independent extensions in one package, plus a theme built for them.
 
 ```
-▶ bash   git status
-▶ read   compiler.go
-▶ edit   parser.go (+8 -2)
-▶ grep   SemanticEditProtocol
+[term]   git status            Ran shell command
+[book]   compiler.go           Read
+[pencil] parser.go             Edited (+8 -2)
+[search] SemanticEditProtocol  Searched
 ```
 
 ## Install
@@ -17,7 +17,7 @@ pi install npm:@guygrigsby/pi-lean
 
 ## `lean-tools` — one line per tool
 
-pi's built-in tool blocks render a full colored shell (the green/red box). This strips the shell and folds each completed call to a single `▶` line: tool, target, and a minimal summary (edits show `(+A -B)`, failures show why, everything else stays bare). Under the fold sits a small accent-colored preview of the result's first meaningful bit — a bash command's first output line, a read's first source line, a grep's first hit — so the quiet label ("Ran shell command") still carries content. Running calls stream live so you still see activity.
+pi's built-in tool blocks render a full colored shell (the green/red box). This strips the shell and folds each completed call to a single line: a Nerd Font icon per operation, the command muted to its left, then a minimal past-tense summary (edits show `(+A -B)`, failures show why). The icon identifies the tool (`pencil` for edit, `book` for read, `terminal` for bash, `magnifier` for grep, `folder` for find, `list` for ls, `floppy` for write), and the command is truncated so the summary never gets pushed off a narrow terminal. Running calls stream live so you still see activity.
 
 | Control | Effect |
 | ------- | ------ |
@@ -26,8 +26,6 @@ pi's built-in tool blocks render a full colored shell (the green/red box). This 
 | `ctrl+o` | (built-in) expand a row's output |
 | `PI_LEAN_MODE` | startup mode: `folded` (default) \| `expanded` \| `hidden` |
 | `PI_LEAN_SKIP` | tools to force-skip, e.g. `edit,write` (default: none) |
-| `PI_LEAN_PREVIEW` | `off` → folded row stays a single line (default: on) |
-| `PI_LEAN_PREVIEW_WIDTH` | plain-char cap for the preview line (default: terminal width) |
 
 It takes over the built-in tool rendering (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`) — but per tool, and only where nothing else got there first. Registration happens at `session_start`, after asking the live registry (`pi.getAllTools`) who owns each tool: one already registered by another extension is left to it, automatically. No coordination config, no conflict error.
 
@@ -49,7 +47,7 @@ Pairs with `pi-tool-display`'s `enableNativeUserMessageBox: false` (drop its fra
 
 ## `lean-spacing` — no blank lines between blocks
 
-`AssistantMessageComponent` interleaves its content with `Spacer(1)` (one blank line) before the text, between each tool call, and around notices — the vertical gap between folded `▶` rows and around turns. There's no setting for it. This drops those spacers (the structural ones only; markdown paragraph breaks are untouched). Same guarded core patch as `lean-usermsg`.
+`AssistantMessageComponent` interleaves its content with `Spacer(1)` (one blank line) before the text, between each tool call, and around notices — the vertical gap between folded rows and around turns. There's no setting for it. This drops those spacers (the structural ones only; markdown paragraph breaks are untouched). Same guarded core patch as `lean-usermsg`.
 
 | Control | Effect |
 | ------- | ------ |

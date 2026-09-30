@@ -11,6 +11,22 @@
 /** The built-in tools lean re-registers, in registration order. */
 export const LEAN_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"];
 
+/** Nerd Font glyph per tool, so the folded row leads with the operation's icon. */
+export const TOOL_ICONS = {
+	read: "\uF02D", // nf-fa-book
+	bash: "\uF120", // nf-fa-terminal
+	edit: "\uF040", // nf-fa-pencil
+	write: "\uF0C7", // nf-fa-floppy_o (save)
+	grep: "\uF002", // nf-fa-search
+	find: "\uF07B", // nf-fa-folder
+	ls: "\uF03A", // nf-fa-list
+};
+
+/** The glyph for a tool's folded row, with a safe fallback for unknown names. */
+export function toolIcon(name) {
+	return TOOL_ICONS[name] ?? "•";
+}
+
 /**
  * Tools lean should leave alone, from a `PI_LEAN_SKIP=edit,write` style list.
  * Hands those rows to whatever else registers them (pi-tool-display's
@@ -90,6 +106,19 @@ export function toolTarget(name, args) {
 	}
 }
 
+// Longest a folded command/target runs before it is clipped, so the label and
+// summary stay visible on a narrow terminal.
+const MAX_CMD = 60;
+
+/**
+ * The muted command/target shown to the left of the folded label, truncated so
+ * the past-tense summary never gets pushed off a narrow terminal.
+ */
+export function foldedCommand(name, args) {
+	const t = toolTarget(name, args);
+	return t.length > MAX_CMD ? t.slice(0, MAX_CMD - 1) + "…" : t;
+}
+
 export function resultText(result) {
 	const content = (result?.content ?? []);
 	return content
@@ -116,8 +145,8 @@ export function editCounts(diff) {
 
 /**
  * The inline suffix on the folded line. Intentionally minimal so a folded
- * transcript reads like the reference (`▶ edit parser.go (+8 -2)`): edits show
- * their diff counts, failures show why, everything else stays bare.
+ * transcript reads like the reference (`[pencil] parser.go  Edited (+8 -2)`):
+ * edits show their diff counts, failures show why, everything else stays bare.
  *
  * Returns { text, tone }:
  *   tone: "edit" → {add,rem} in add/rem colors (text carries the parts)
@@ -147,87 +176,32 @@ export function foldSummary(name, result, isError) {
 	return { tone: "", text: "" };
 }
 
-export const CARET_FOLDED = "▶";
-export const CARET_EXPANDED = "▼";
-
-/** Squash whitespace runs so multi-word output fits on one preview line. */
-function squash(s) {
-	return String(s ?? "").replace(/\s+/g, " ").trim();
-}
-
 /**
- * The little content preview under the folded line — as much of the first
- * meaningful line of the result as fits in `width` plain-text chars. The
- * caller colors it (something other than the fold's gray) and truncates to
- * the real terminal width.
- *
- *   bash  → first output line, else stderr's first line (errors often have
- *           no stdout), else "" so the `✗ exit N` suffix stands alone
- *   read/edit/write → the file's first content line (skips the "Read N lines"
- *           confirmation), capped at MAX_SOURCE chars
- *   grep/find/ls → the matches/listing's first line
- *
- * "" means no preview — the folded row stays a single line.
- */
-const MAX_SOURCE = 300;
-export function previewLine(name, result, args) {
-	const text = resultText(result);
-	const details = result?.details ?? {};
-	switch (name) {
-		case "bash": {
-			const out = squash(text.split("\n").map((l) => l.trim()).find(Boolean) ?? "");
-			if (out) return out;
-			return squash(details.stderr ?? "");
-		}
-		case "read": {
-			const m = text.match(/\n1\t([^\n]*)/);
-			const src = m ? squash(m[1]) : squash(text);
-			return src.slice(0, MAX_SOURCE);
-		}
-		case "edit":
-		case "write": {
-			const src = squash(String(args?.content ?? "").split("\n")[0]);
-			return src.slice(0, MAX_SOURCE);
-		}
-		default:
-			// grep/find/ls output is already a line-per-hit listing.
-			return squash(text.split("\n").map((l) => l.trim()).find(Boolean) ?? "");
-	}
-}
-
-function basename(p) {
-	const s = String(p ?? "").replace(/\/+$/, "");
-	const i = s.lastIndexOf("/");
-	return i >= 0 ? s.slice(i + 1) : s;
-}
-
-/**
- * The quiet, past-tense summary shown for a completed call in folded mode:
- * one dark-gray line, no command echo (Claude-Code style). Deliberately terse —
- * a file basename where useful, nothing where the tool speaks for itself.
+ * The quiet, past-tense summary shown for a completed call in folded mode.
+ * The target itself (command, path, pattern) now sits to the left of this,
+ * muted, so the label is just the verb:
  *
  *   bash  → Ran shell command
- *   read  → Read parser.go
- *   edit  → Edited parser.go
- *   grep  → Searched "SemanticEdit"
+ *   read  → Read
+ *   edit  → Edited
+ *   grep  → Searched
  */
-export function quietLabel(name, args) {
-	const a = args ?? {};
+export function quietLabel(name) {
 	switch (name) {
 		case "bash":
 			return "Ran shell command";
 		case "read":
-			return `Read ${basename(a.path)}`;
+			return "Read";
 		case "edit":
-			return `Edited ${basename(a.path)}`;
+			return "Edited";
 		case "write":
-			return `Wrote ${basename(a.path)}`;
+			return "Wrote";
 		case "grep":
-			return `Searched "${String(a.pattern ?? "")}"`;
+			return "Searched";
 		case "find":
 			return "Searched files";
 		case "ls":
-			return `Listed ${basename(a.path) || "directory"}`;
+			return "Listed";
 		default:
 			return name;
 	}
