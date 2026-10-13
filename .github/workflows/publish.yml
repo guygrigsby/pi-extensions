@@ -27,7 +27,10 @@ jobs:
         with:
           # Trusted publishing needs npm >= 11.5.1, which ships with node 24.
           node-version: 24
-      - run: npm ci
+      - name: Install deps
+        run: |
+          npm ci
+          for l in */package-lock.json; do ( cd "$(dirname "$l")" && npm ci ); done
       - run: make test
       - name: Bump changed packages and push
         run: |
