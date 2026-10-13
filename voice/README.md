@@ -157,3 +157,5 @@ This is a faithful port of the `my-voice` Claude Code plugin. Same corpus layout
 - Claude `commands/*.md` → pi `skills/<name>/SKILL.md`, invoked as `/skill:voice*` instead of `/voice*`.
 - Skill names drop the colon (`voice:init` → `voice-init`) per the pi/Agent-Skills name rules.
 - `${CLAUDE_PLUGIN_ROOT}` template/script references → paths relative to the skill directory (`../../templates`, `../../scripts`).
+
+Releases publish from CI with npm provenance.
