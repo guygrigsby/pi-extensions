@@ -11,6 +11,8 @@ concurrency:
 
 permissions:
   contents: write
+  # npm trusted publishing (OIDC); no stored token.
+  id-token: write
 
 jobs:
   publish:
@@ -23,8 +25,8 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          # Trusted publishing needs npm >= 11.5.1, which ships with node 24.
+          node-version: 24
       - run: npm ci
       - run: make test
       - name: Bump changed packages and push
@@ -40,5 +42,3 @@ jobs:
           git push origin HEAD:main
       - name: Publish unpublished versions
         run: make publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
