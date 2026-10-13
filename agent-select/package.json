@@ -1,0 +1,39 @@
+{
+  "name": "@guygrigsby/pi-agent-select",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pick subagent models from pi's live registry with agent-select: cost or quality ranking, scored by recorded test and CI verdicts ahead of declared scores.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension",
+    "subagents",
+    "routing"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guygrigsby/pi-extensions.git",
+    "directory": "agent-select"
+  },
+  "author": {
+    "name": "Guy J Grigsby"
+  },
+  "files": [
+    "extensions/",
+    "dist/",
+    "tests/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
