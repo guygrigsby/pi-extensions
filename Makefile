@@ -13,6 +13,7 @@
 #   make bump      patch-bump those packages
 #   make release   test, bump, commit, publish (needs a clean tree)
 #   make publish PKGS=aperture-models   publish one package
+#   make first-publish PKG=name   manual first publish of a new package (OIDC can't create one)
 
 PI      ?= pi
 NPM     ?= npm
@@ -24,7 +25,7 @@ PKGS := $(patsubst %/package.json,%,$(wildcard */package.json))
 SKIP    ?= pets
 INSTALL_PKGS := $(filter-out $(SKIP),$(PKGS))
 
-.PHONY: build check lint install local redeploy test list changed bump release publish publish-dry
+.PHONY: build check lint install local redeploy test list changed bump release publish publish-dry first-publish
 
 # A package is changed if anything under it landed (or is uncommitted) since the
 # commit that last touched its version line in package.json.
@@ -104,3 +105,12 @@ publish: build bump
 
 publish-dry: build
 	@for p in $(PKGS); do echo "==> npm publish --dry-run $$p"; ( cd "$$p" && $(NPM) publish --dry-run --access public ) || exit 1; done
+
+# CI publishes via npm trusted publishing, which needs the package to exist
+# already. Publish a new package once by hand, then add the trusted publisher
+# (guygrigsby/pi-extensions, publish.yml) at npmjs.com/package/<name>/access.
+first-publish: build
+	@[ -n "$(PKG)" ] || { echo "usage: make first-publish PKG=<dir>"; exit 1; }
+	@name=$$(node -p "require('./$(PKG)/package.json').name"); \
+	( cd "$(PKG)" && $(NPM) publish --access public ) && \
+	echo "next: add trusted publisher at https://www.npmjs.com/package/$$name/access (guygrigsby, pi-extensions, publish.yml)"
