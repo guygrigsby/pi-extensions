@@ -55,6 +55,21 @@ export function ownedElsewhere(allTools, name) {
 	return Boolean(source && source !== "builtin");
 }
 
+// Packages known to draw their own rows for the tools they own. Ownership
+// alone doesn't say that: pi-sbx owns all seven built-ins but spreads the stock
+// renderers and only swaps execute, so its rows still want folding.
+const ROW_RENDERERS = ["pi-tool-display"];
+
+/**
+ * Whether `name` is owned elsewhere by a known row renderer, so lean-anytool
+ * must leave its rows whole. Other owners (execute-only wrappers) get folded.
+ */
+export function ownerDrawsRows(allTools, name) {
+	if (!ownedElsewhere(allTools, name)) return false;
+	const path = String((allTools ?? []).find((t) => t?.name === name)?.sourceInfo?.path ?? "");
+	return ROW_RENDERERS.some((pkg) => path.split(/[\\/]/).includes(pkg));
+}
+
 /**
  * Skip entries that name no tool lean owns. A typo would otherwise skip nothing
  * and look like the setting was ignored, so the caller surfaces these.

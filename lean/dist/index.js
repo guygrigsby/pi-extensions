@@ -41,6 +41,12 @@ function ownedElsewhere(allTools, name) {
   const source = tool?.sourceInfo?.source;
   return Boolean(source && source !== "builtin");
 }
+var ROW_RENDERERS = ["pi-tool-display"];
+function ownerDrawsRows(allTools, name) {
+  if (!ownedElsewhere(allTools, name)) return false;
+  const path2 = String((allTools ?? []).find((t) => t?.name === name)?.sourceInfo?.path ?? "");
+  return ROW_RENDERERS.some((pkg) => path2.split(/[\\/]/).includes(pkg));
+}
 function unknownTools(skip2) {
   return [...skip2].filter((name) => !LEAN_TOOLS.includes(name));
 }
@@ -239,7 +245,7 @@ function registerLean(pi, cwd) {
   for (const name of LEAN_TOOLS) {
     if (skip.has(name)) continue;
     if (!registeredByLean.has(name) && ownedElsewhere(registry, name)) {
-      leftAlone.add(name);
+      if (ownerDrawsRows(registry, name)) leftAlone.add(name);
       continue;
     }
     registeredByLean.add(name);

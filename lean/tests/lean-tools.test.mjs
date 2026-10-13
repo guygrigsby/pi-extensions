@@ -15,6 +15,7 @@ import {
 	unknownTools,
 	shouldCompactRow,
 	ownedElsewhere,
+	ownerDrawsRows,
 	LEAN_TOOLS,
 } from "../extensions/lean-tools-core.mjs";
 
@@ -72,6 +73,20 @@ test("ownedElsewhere: no registry (pre-bind) means register everything", () => {
 	assert.equal(ownedElsewhere(undefined, "edit"), false);
 	assert.equal(ownedElsewhere(null, "write"), false);
 	assert.equal(ownedElsewhere([], "edit"), false);
+});
+
+test("ownerDrawsRows: only a known row renderer keeps its rows unfolded", () => {
+	const registry = [
+		{ name: "edit", sourceInfo: { source: "extension", path: "/x/node_modules/pi-tool-display/src/index.ts" } },
+		// pi-sbx swaps execute but spreads the built-in renderers: fold it.
+		{ name: "bash", sourceInfo: { source: "extension", path: "/x/node_modules/@christianmoesl/pi-sbx/extensions/pi-sbx/index.ts" } },
+		{ name: "read", sourceInfo: { source: "builtin", path: "builtin:read" } },
+	];
+	assert.equal(ownerDrawsRows(registry, "edit"), true);
+	assert.equal(ownerDrawsRows(registry, "bash"), false);
+	assert.equal(ownerDrawsRows(registry, "read"), false);
+	assert.equal(ownerDrawsRows(registry, "grep"), false);
+	assert.equal(ownerDrawsRows(undefined, "edit"), false);
 });
 
 test("LEAN_TOOLS is the tool set lean owns", () => {

@@ -73,6 +73,7 @@ import {
 	parseSkipList,
 	unknownTools,
 	ownedElsewhere,
+	ownerDrawsRows,
 } from "./lean-tools-core.mjs";
 
 type Mode = "folded" | "expanded" | "hidden";
@@ -89,9 +90,9 @@ let mode: Mode = readDefaultMode();
 // the environment changes anyway.
 const skip = parseSkipList(process.env.PI_LEAN_SKIP);
 
-// Everything lean is leaving to someone else: the forced PI_LEAN_SKIP entries
-// plus whatever session_start finds already owned by another extension.
-// lean-anytool reads this so it doesn't fold those renderers' rows either.
+// Rows lean-anytool must not fold: the forced PI_LEAN_SKIP entries plus tools
+// session_start finds owned by a known row renderer. Tools owned by an
+// execute-only wrapper (pi-sbx) aren't here, so their stock rows still fold.
 export const leftAlone = new Set<string>(skip);
 
 // Names lean itself registered. Ownership checks can't tell "another extension
@@ -230,7 +231,7 @@ function registerLean(pi: ExtensionAPI, cwd: string): void {
 		// Another extension got here first (pi-tool-display's diff renderer,
 		// say). Registering anyway would make pi drop lean entirely.
 		if (!registeredByLean.has(name) && ownedElsewhere(registry, name)) {
-			leftAlone.add(name);
+			if (ownerDrawsRows(registry, name)) leftAlone.add(name);
 			continue;
 		}
 		registeredByLean.add(name);
