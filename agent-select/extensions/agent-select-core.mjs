@@ -3,6 +3,9 @@
 // agent-select's; this file only asserts what the registry says.
 
 import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // Chat models only: those are what a subagent spawn can run. Caps are the
 // registry's input modalities plus "reasoning". Rates are USD per million.
@@ -42,9 +45,12 @@ export function buildRequest(params, candidates, scores) {
 	return { task, candidates, scores };
 }
 
-function exec(cli, args, input, signal) {
+// jevUrl, when set, points the CLI's Jev calls at a gateway; otherwise the
+// CLI reads TYPESAFE_URL or TYPESAFE_API_KEY from pi's environment.
+function exec(cli, args, input, signal, jevUrl) {
 	return new Promise((resolve, reject) => {
-		const child = spawn(cli, args, { signal, stdio: ["pipe", "pipe", "pipe"] });
+		const env = jevUrl ? { ...process.env, TYPESAFE_URL: jevUrl } : process.env;
+		const child = spawn(cli, args, { signal, env, stdio: ["pipe", "pipe", "pipe"] });
 		let stdout = "";
 		let stderr = "";
 		child.stdout.on("data", (d) => (stdout += d));
@@ -72,6 +78,56 @@ export async function record({ cli, history, task, model, verdict, signal }) {
 	const args = ["record", "--history", history, "--task", task, "--id", model, "--verdict", verdict];
 	const { code, stderr } = await exec(cli, args, "", signal);
 	if (code !== 0) throw new Error(`agent-select record exit ${code}${stderr ? `: ${stderr}` : ""}`);
+}
+
+// The task kinds route_subagent knows and the registry capabilities Jev
+// may require, each with what it means. Config "taxonomy" replaces it.
+export const DEFAULT_TAXONOMY = {
+	tasks: {
+		code: "write, fix or change source code",
+		review: "review a code change or design and comment on it",
+		research: "find, read and summarize information",
+		docs: "write prose documentation",
+	},
+	caps: {
+		image: "reading images or screenshots",
+		reasoning: "hard multi-step problem solving: debugging an unknown failure, design, proofs; not routine edits",
+	},
+};
+
+// classify asks agent-select's Jev classifier for the task fields of a
+// prompt: name ("" when it fits none or Jev is unsure), need and sizes.
+export async function classify({ cli, jevUrl, taxonomy = DEFAULT_TAXONOMY, prompt, signal }) {
+	const dir = await mkdtemp(join(tmpdir(), "agent-select-"));
+	try {
+		const path = join(dir, "taxonomy.json");
+		await writeFile(path, JSON.stringify(taxonomy));
+		const { code, stdout, stderr } = await exec(cli, ["classify", "--taxonomy", path], prompt, signal, jevUrl);
+		if (code !== 0) throw new Error(`agent-select classify exit ${code}${stderr ? `: ${stderr}` : ""}`);
+		const { name = "", need = null, input_tokens, output_tokens } = JSON.parse(stdout).task;
+		return { name, need, input_tokens, output_tokens };
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+}
+
+// mergeClassified fills the route parameters the caller left out from a
+// classification; anything the caller set wins.
+export function mergeClassified(params, c) {
+	const out = { ...params };
+	if (out.task === undefined && c.name) out.task = c.name;
+	if (out.need === undefined && c.need) out.need = c.need;
+	for (const k of ["input_tokens", "output_tokens"]) if (out[k] === undefined && c[k] > 0) out[k] = c[k];
+	return out;
+}
+
+// judge asks Jev whether a run did what was asked. agent-select appends the
+// verdict only when Jev is sure (exit 0); exit 3 is undecided, nothing recorded.
+export async function judge({ cli, jevUrl, history, task, model, request, result, signal }) {
+	const args = ["judge", "--history", history, "--task", task, "--id", model];
+	const { code, stdout, stderr } = await exec(cli, args, JSON.stringify({ request, result }), signal, jevUrl);
+	if (code !== 0 && code !== 3) throw new Error(`agent-select judge exit ${code}${stderr ? `: ${stderr}` : ""}`);
+	return JSON.parse(stdout);
 }
 
 const ALTERNATIVES = 3;

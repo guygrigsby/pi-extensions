@@ -2,7 +2,7 @@
   "name": "@guygrigsby/pi-agent-select",
   "version": "0.1.0",
   "type": "module",
-  "description": "Pick subagent models from pi's live registry with agent-select: cost or quality ranking, scored by recorded test and CI verdicts ahead of declared scores.",
+  "description": "Pick subagent models from pi's live registry with agent-select: cost or quality ranking, Jev task classification, scored by recorded test, CI and Jev verdicts ahead of declared scores.",
   "keywords": [
     "pi-package",
     "pi",

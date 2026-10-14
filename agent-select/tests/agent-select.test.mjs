@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildRequest, rank, record, summarize, toCandidates } from "../extensions/agent-select-core.mjs";
+import { buildRequest, classify, judge, mergeClassified, rank, record, summarize, toCandidates } from "../extensions/agent-select-core.mjs";
 
 const models = [
 	{ provider: "anthropic", id: "sonnet", input: ["text", "image"], reasoning: true, contextWindow: 1_000_000, maxTokens: 64_000, cost: { input: 3, output: 15 } },
@@ -81,4 +82,49 @@ test("record then rank through the real CLI", { skip: !haveCli && `${cli} not on
 	const none = await rank({ cli, history, request: buildRequest({ task: "code", need: ["video"] }, request.candidates, {}) });
 	assert.equal(none.ranked.length, 0);
 	assert.ok(none.rejected.length > 0);
+});
+
+test("mergeClassified fills only what the caller left out", () => {
+	const c = { name: "code", need: ["reasoning"], input_tokens: 900, output_tokens: 8000 };
+	assert.deepEqual(mergeClassified({ mode: "quality" }, c), { mode: "quality", task: "code", need: ["reasoning"], input_tokens: 900, output_tokens: 8000 });
+	assert.deepEqual(mergeClassified({ task: "review", need: [], output_tokens: 10 }, c), { task: "review", need: [], input_tokens: 900, output_tokens: 10 });
+	// An unclassified prompt leaves the task unknown, never a guess.
+	assert.equal(mergeClassified({}, { name: "", need: null, input_tokens: 3, output_tokens: 500 }).task, undefined);
+});
+
+// A stand-in for Jev's /v1/systemone that answers from the question ids.
+async function fakeJev(t, noul) {
+	const srv = createServer((req, res) => {
+		let body = "";
+		req.on("data", (d) => (body += d));
+		req.on("end", () => {
+			const answers = {};
+			for (const [id, q] of Object.entries(JSON.parse(body).questions)) {
+				if (q.type === "choice") answers[id] = { type: "choice", choice: "code", confidence: 0.9, probabilities: { code: 0.9 } };
+				else if (q.type === "score") answers[id] = { type: "score", score: 2, confidence: 1, probabilities: { 2: 1 } };
+				else answers[id] = { type: "noul", noul: id === "need:image" ? 0.1 : noul };
+			}
+			res.end(JSON.stringify({ model: "jev-test", answers }));
+		});
+	});
+	await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+	t.after(() => srv.close());
+	return `http://127.0.0.1:${srv.address().port}/v1/systemone`;
+}
+
+test("classify through the real CLI", { skip: !haveCli && `${cli} not on PATH` }, async (t) => {
+	const jevUrl = await fakeJev(t, 0.9);
+	const c = await classify({ cli, jevUrl, prompt: "fix the flaky test" });
+	assert.deepEqual(c, { name: "code", need: ["reasoning"], input_tokens: 5, output_tokens: 8000 });
+});
+
+test("judge through the real CLI records only a decided verdict", { skip: !haveCli && `${cli} not on PATH` }, async (t) => {
+	const history = join(await mkdtemp(join(tmpdir(), "agent-select-")), "outcomes.jsonl");
+	const run = { cli, history, task: "code", model: "a/x", request: "add a test", result: "--- PASS: TestX" };
+	const v = await judge({ ...run, jevUrl: await fakeJev(t, 0.95) });
+	assert.equal(v.decided, true);
+	assert.equal(v.pass, true);
+	const unsure = await judge({ ...run, jevUrl: await fakeJev(t, 0.5) });
+	assert.equal(unsure.decided, false);
+	assert.equal(await readFile(history, "utf8"), '{"task":"code","id":"a/x","pass":true,"judge":"jev-test"}\n');
 });
